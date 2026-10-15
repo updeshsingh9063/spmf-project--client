@@ -49,6 +49,18 @@ const toDraft = (p: Project): ProjectDraft => ({
 
 const numValue = (n: number) => (Number.isFinite(n) ? n : "");
 
+/**
+ * Whether results came from Shield's confirmed SPFM rules.
+ *
+ * Deliberately a allowlist of nothing: while the formulas are placeholders there is
+ * no confirmed engine, so every result is flagged. When the real rules arrive, name
+ * their version here and the warnings stop on their own.
+ */
+const CONFIRMED_ENGINE_VERSIONS: readonly string[] = [];
+
+const isConfirmedEngine = (version: string | null | undefined) =>
+  !!version && CONFIRMED_ENGINE_VERSIONS.includes(version);
+
 function NumField({
   id, label, value, onChange, error, suffix, step = "any",
 }: {
@@ -574,9 +586,15 @@ export function ProjectEditor({ project }: { project: Project | null }) {
             {draft.calculatedAt && (
               <p className="mt-4 text-xs text-muted">Last calculated {fmtDate(draft.calculatedAt)}</p>
             )}
-            {engineVersion?.startsWith("placeholder") && (
+            {/* Safe by default: the warning shows unless the figures are known to
+                have come from Shield's confirmed rules. Unknown provenance warns.
+                Getting this backwards would let someone read invented numbers as
+                real ones. */}
+            {draft.results && !isConfirmedEngine(engineVersion) && (
               <p className="mt-2 rounded-md bg-warn-wash px-3 py-2 text-xs text-warn">
-                These figures come from placeholder formulas, not Shield&apos;s SPFM rules. They are for layout review only.
+                <strong className="font-semibold">Example figures.</strong> These come from placeholder
+                formulas, not Shield&apos;s SPFM rules, and will change once the real calculations are
+                supplied. The layout and workflow are what to review here.
               </p>
             )}
           </div>
