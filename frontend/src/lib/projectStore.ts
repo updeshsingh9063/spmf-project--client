@@ -212,7 +212,13 @@ export async function updateProject(
 export async function calculateProject(
   id: string,
   draft: ProjectDraft,
-): Promise<{ results: SpfmResults; state: CalculationState; engineVersion: string | null }> {
+): Promise<{
+  results: SpfmResults;
+  state: CalculationState;
+  engineVersion: string | null;
+  /** Local-mode freshness marker. Null in API mode: the server decides there. */
+  calculatedFor: string | null;
+}> {
   if (apiMode()) {
     const { data } = await apiPost<{
       results: ApiResults;
@@ -224,10 +230,16 @@ export async function calculateProject(
       results: toResults(data.results)!,
       state: data.calculationState,
       engineVersion: data.engineVersion,
+      calculatedFor: null,
     };
   }
 
-  return { results: calculate(draft.inputs), state: "current", engineVersion: "preview" };
+  return {
+    results: calculate(draft.inputs),
+    state: "current",
+    engineVersion: "preview",
+    calculatedFor: fingerprint(draft.inputs),
+  };
 }
 
 export async function getHistory(

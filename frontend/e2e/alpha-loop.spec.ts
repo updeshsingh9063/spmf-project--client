@@ -83,7 +83,8 @@ test("warns before leaving a project with unsaved changes", async ({ page }) => 
   page.on("dialog", (d) => d.accept());
   await page.goto("/login");
   await page.getByRole("button", { name: "Sign in with Microsoft" }).click();
-  await page.getByRole("link", { name: "Projects" }).click();
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await nav.getByRole("link", { name: "Projects" }).click();
   await page.locator("tbody tr").first().getByRole("link").click();
   await expect(page.locator("#name")).toBeVisible();
 
@@ -95,7 +96,7 @@ test("warns before leaving a project with unsaved changes", async ({ page }) => 
   page.on("dialog", (d) => d.dismiss());
 
   const url = page.url();
-  await page.getByRole("link", { name: "Projects" }).click();
+  await nav.getByRole("link", { name: "Projects" }).click();
   await page.waitForTimeout(300);
 
   expect(page.url()).toBe(url);
@@ -106,7 +107,7 @@ test("the account screen shows who is signed in", async ({ page }) => {
   // Requirements s45 lists a user/profile screen.
   await page.goto("/login");
   await page.getByRole("button", { name: "Sign in with Microsoft" }).click();
-  await page.getByRole("link", { name: "Your account" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Your account" }).click();
 
   await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
   await expect(page.getByText("Preview (simulated sign-in)")).toBeVisible();
@@ -116,7 +117,7 @@ test("projects can be sorted", async ({ page }) => {
   // Requirements s27 lists sorting, alphabetical and project number.
   await page.goto("/login");
   await page.getByRole("button", { name: "Sign in with Microsoft" }).click();
-  await page.getByRole("link", { name: "Projects" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Projects" }).click();
 
   await page.getByLabel("Sort by").selectOption("name");
   const names = await page.locator("tbody tr td:nth-child(2) a").allInnerTexts();

@@ -294,16 +294,19 @@ export function ProjectEditor({ project }: { project: Project | null }) {
 
     setCalculating(true);
     try {
-      const { results, state: newState, engineVersion: version } = await calculateProject(project?.id ?? "", draft);
-      setDraft((d) => ({ ...d, results, calculatedAt: new Date().toISOString() }));
+      const { results, state: newState, engineVersion: version, calculatedFor } =
+        await calculateProject(project?.id ?? "", draft);
+
+      const calculatedAt = new Date().toISOString();
+      setDraft((d) => ({ ...d, results, calculatedFor, calculatedAt }));
       setServerState(newState);
       setEngineVersion(version);
+
+      // Calculating does not change the inputs, so it must not leave the form dirty.
       setSaved((s) => {
-        // Calculating does not change the inputs, so it must not make the form dirty.
         const parsed = JSON.parse(s) as ProjectDraft;
-        return JSON.stringify({ ...parsed, results, calculatedAt: new Date().toISOString() });
+        return JSON.stringify({ ...parsed, results, calculatedFor, calculatedAt });
       });
-      setDraft((d) => ({ ...d }));
       setToast("Calculated");
       void loadHistory();
     } catch (err) {
