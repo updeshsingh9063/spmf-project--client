@@ -1,0 +1,342 @@
+SPFM
+Design & Product Requirements
+SOURCE OF TRUTH
+Shield Security Doors
+Version 1.0  |  October 15, 2026
+Purpose: realign implementation with the approved SPFM product intent and define the minimum usable Alpha and V1 direction.
+One-sentence product definition  SPFM organizes financial information around Projects so users can efficiently resolve bookkeeping Decisions before each Accounting Period is closed.
+ |
+Implementation rule  Every feature must help complete Shield’s day-to-day financial work faster. Do not add generic project-management, CRM, manufacturing, or analytics functionality unless it directly serves the approved financial workflow.
+ |
+1. Product intent
+SPFM is a project-centric financial operations layer for Shield Security Doors. QuickBooks remains the accounting system of record. SPFM exists to organize QuickBooks financial activity around real Shield projects, add the operational facts QuickBooks does not know (especially shipment status), and guide users through the bookkeeping decisions required to keep revenue recognition and receivables accurate.
+Core principle  SPFM should reduce bookkeeping ambiguity and manual reconciliation. It should not require users to re-key financial information that already exists in QuickBooks.
+ |
+The business problem SPFM solves
+A customer contract/project may span estimates, invoices, deposits, payments, multiple shipments, and multiple accounting periods.
+Cash received before shipment is not automatically the same thing as earned/recognized revenue; pre-shipment receipts may need to remain deferred until the relevant shipment occurs.
+Partial shipments create allocation and recognition decisions that are difficult to see clearly in QuickBooks alone.
+Accounts receivable and collections need to be viewed in project context, alongside shipment and recognition status.
+Before an accounting period is closed, unresolved exceptions should be surfaced as a short, decision-based work queue rather than discovered through manual searching.
+What SPFM is not
+Not the product
+ | Why
+ |
+A manual job-costing / gross-margin calculator
+ | The current prototype emphasizes unit cost, labor, subcontractors, overhead and margin. That is a different product concept.
+ |
+A generic project-management system
+ | Tasks, CRM-style activity, broad project collaboration and generic dashboards are outside the core financial workflow.
+ |
+A door configurator / pricing calculator
+ | Shield’s door pricing/configuration and weight calculators are separate tools and should not be conflated with SPFM.
+ |
+A replacement for QuickBooks
+ | Accounting documents and core accounting records remain in QuickBooks; SPFM adds project organization, operational context and decisions.
+ |
+2. System boundary and source of truth
+The intended hierarchy is Customer → accepted Estimate/Proposal (contract) → Invoices → Payments → Shipment(s) → Revenue Recognition. SPFM groups and interprets these records as a Project.
+Data / decision
+ | Primary source
+ |
+Customer, estimate/proposal, invoices, payments
+ | QuickBooks
+ |
+Project grouping / linking
+ | SPFM, using QuickBooks records
+ |
+Shipment facts and shipment allocation
+ | SPFM operational input (or later integration)
+ |
+Deferred vs. recognized revenue decision
+ | SPFM decision logic / user resolution, reflected in accountant workflow
+ |
+A/R amount and payment status
+ | QuickBooks, presented in project context
+ |
+Accounting-period review state / unresolved exceptions
+ | SPFM
+ |
+Manual overrides
+ | SPFM, explicit and traceable; not silent replacement of source data
+ |
+Critical correction to current prototype  “QuickBooks import comes in Phase 2” is not aligned with the product design. QuickBooks synchronization is foundational to SPFM and belongs at the beginning of the usable product path.
+ |
+3. Core financial model
+A user should be able to understand a project’s financial position in roughly one minute. The project financial summary should derive as much as possible from linked QuickBooks records and clearly distinguish cash, invoicing, receivables, deferred revenue and recognized revenue.
+Metric
+ | Meaning
+ |
+Contract value
+ | Value of the accepted estimate/proposal or approved contract basis.
+ |
+Invoiced
+ | Total invoices associated with the project.
+ |
+Remaining to invoice
+ | Contract value less invoiced amount, where applicable.
+ |
+Collected
+ | Payments received against project invoices / project activity.
+ |
+Accounts receivable
+ | Invoiced amount still unpaid.
+ |
+Deferred revenue
+ | Amounts received/invoiced that have not yet met the project’s recognition trigger.
+ |
+Recognized revenue
+ | Revenue assigned to completed/shipped performance according to the approved recognition workflow.
+ |
+Revenue recognition principle
+SPFM was designed around accrual accounting with shipment as the key operational recognition trigger for Shield’s project workflow. Amounts received before the applicable shipment should remain deferred rather than being treated as recognized revenue solely because cash was collected.
+For partial shipments, SPFM must support allocation of the appropriate portion of project value/revenue to the shipped portion, leaving the balance deferred until later shipment(s). The system should surface ambiguity for resolution rather than silently inventing an allocation.
+4. Primary user workflow
+Sign in and land on the Work Queue / financial work home.
+Review items that require a bookkeeping decision or follow-up.
+Open the specific project and see its current financial position, linked QuickBooks activity, shipment state and unresolved decisions.
+Resolve the specific issue using the purpose-built decision interface (for example, allocate a partial shipment or determine the recognition month).
+Save the decision and immediately update the project’s financial state.
+Continue until the accounting period has no unresolved material items, then complete Financial Review / accountant reporting.
+Closed, fully paid and fully recognized projects become eligible for automatic archival after the approved waiting period.
+Approved archive behavior  A project can auto-archive 7 days after it is closed, revenue is fully recognized, and it is fully paid. Unpaid balances must remain visibly highlighted and prevent the project from disappearing from attention.
+ |
+5. Required workspaces and screens
+5.1 Work Queue — home
+The Work Queue is the operational center of SPFM. It should be short, decision-based and action-oriented. It is not a generic task list.
+Show only projects/items that require a meaningful financial action, decision, exception resolution or follow-up.
+Each row should state the project, the issue, relevant amount/context, and the action needed.
+Clicking an item opens the specific resolution interface for that issue — not a generic “Review Project” drawer.
+Support efficient resolution patterns such as quick resolve, batch handling where logically safe, ownership and snooze/defer where needed.
+Items disappear from the queue when the underlying issue is actually resolved, not merely viewed.
+Example queue item
+ | Expected action
+ |
+Payment received before shipment / revenue still deferred
+ | Review recognition status; confirm it remains deferred or link to shipment.
+ |
+Partial shipment recorded
+ | Allocate project/contract value to the shipped portion and establish recognition.
+ |
+Past-due invoice / unpaid balance
+ | Review collection status and follow-up context.
+ |
+Unmatched or ambiguous QuickBooks activity
+ | Match to the correct project or explicitly resolve as non-project / exception.
+ |
+Accounting period has unresolved decisions
+ | Open the exact decisions preventing period completion.
+ |
+5.2 Projects
+Projects are the organizing unit. The Projects workspace should make it easy to find a project and understand whether it needs attention; it should not be dominated by manually entered profitability metrics.
+Search and open projects by practical identifiers such as project/customer/name/number.
+Show concise status indicators for financial completeness, outstanding A/R, recognition state and unresolved decisions.
+Allow creation/linking of a project around the accepted QuickBooks estimate/proposal and related records.
+Support historical projects and migration where source records predate SPFM.
+5.3 Project page
+The project page is primarily a financial understanding and decision screen, not a data-entry form for generic costs. It should be nearly read-only except where SPFM-specific operational facts or decisions must be entered.
+Project summary: customer, project identity, status and contract basis.
+Financial summary: contract, invoiced, remaining, collected, A/R, deferred and recognized.
+Linked QuickBooks activity: accepted estimate/proposal, invoices and payments.
+Shipments: shipment date/status and any allocation needed for partial shipments.
+Open decisions / exceptions: only unresolved items that require action.
+Documents or supporting context where directly useful to the financial decision.
+Clear indication when a project is financially complete, fully paid and fully recognized.
+5.4 Financial Reviews / Accounting Periods
+Provide a controlled way to review the period before close.
+Surface unresolved project decisions that affect the period.
+Produce an accountant-ready reporting package / summary of recognition, deferred revenue and relevant adjustments.
+Do not allow the review experience to hide unresolved exceptions behind aggregate dashboard numbers.
+5.5 Historical Migration
+V1 must accommodate historical projects and transactions so SPFM can become useful without requiring every project to originate after go-live. Migration should support linking older QuickBooks activity and resolving incomplete historical states pragmatically.
+6. Decision logic and exception handling
+SPFM should automate what is deterministic and ask a human only where judgment or missing operational context is required. The Work Queue is the mechanism for those exceptions.
+Situation
+ | System behavior
+ |
+Payment collected; no applicable shipment
+ | Keep revenue deferred; surface only if a decision/review is needed.
+ |
+Full shipment with clear project value
+ | Recognize according to approved shipment/period logic.
+ |
+Partial shipment
+ | Require/derive an allocation; recognize only the shipped portion; leave remainder deferred.
+ |
+Invoice unpaid
+ | Keep A/R visible; highlight overdue/unpaid balance according to collections workflow.
+ |
+QuickBooks record cannot be confidently linked
+ | Create a matching exception rather than guessing.
+ |
+User override required
+ | Allow explicit override with reason/context; preserve traceability.
+ |
+Project closed + fully recognized + fully paid
+ | Eligible for auto-archive after 7 days.
+ |
+7. Alpha: minimum usable implementation
+The September 2026 decision was to streamline development aggressively so Shield could use SPFM on real projects sooner. The Alpha should prove the end-to-end financial workflow before investing in breadth or polish.
+Alpha success criterion  A real Shield project can be brought in from QuickBooks, opened as a Project, have its shipment/recognition state resolved, saved, reopened and edited, with the resulting financial state remaining coherent.
+ |
+Alpha must-have
+Authentication sufficient for internal use.
+QuickBooks read/sync path for the minimum records needed: customer, accepted estimate/proposal, invoices and payments.
+Minimum Project data model and linking of those records.
+Project list / search and a consolidated project screen.
+Financial summary calculations: contract, invoiced, collected, A/R, deferred and recognized.
+Shipment entry/status sufficient to drive recognition.
+At least the essential decision workflow for deferred/recognized revenue and partial shipment handling.
+Persistence: save, close, reopen and edit without losing the financial/decision state.
+Test against one or more real Shield projects before adding secondary features.
+Deploy a usable internal version.
+Explicitly deferred until after Alpha
+Granular roles and permissions.
+Full audit-history UI beyond what is necessary for safe decisions.
+Broad dashboards and analytics.
+Advanced search, pagination and administrative screens.
+Full file/document-management functionality.
+Highly polished responsive/mobile UI.
+Extensive automated testing/logging infrastructure and deployment pipelines beyond what is needed for a safe internal Alpha.
+Comprehensive end-user documentation.
+8. V1 functional scope after Alpha
+Capability
+ | V1 direction
+ |
+QuickBooks synchronization
+ | Foundational, reliable synchronization and project linking.
+ |
+Projects
+ | Project-centric view of financial position and source records.
+ |
+Deferred / recognized revenue
+ | Shipment-aware recognition workflow.
+ |
+Shipments
+ | Full and partial shipment handling, including allocation decisions.
+ |
+A/R & collections
+ | Outstanding balances and collection attention in project context.
+ |
+Work Queue
+ | Decision-based financial exceptions and follow-up.
+ |
+Overrides / corrections
+ | Explicit, traceable resolution of exceptions.
+ |
+Accounting periods / Financial Review
+ | Period readiness, unresolved decisions and close support.
+ |
+Accountant reports
+ | Useful reporting package for deferred/recognized revenue and period review.
+ |
+Historical migration
+ | Bring prior projects into a coherent state.
+ |
+Search / basic administration
+ | Only as needed to operate the above efficiently.
+ |
+9. Current prototype: keep, change, remove
+The October 15 prototype has a clean visual foundation, but its information architecture currently reflects a different product: manual job costing and project profitability. The developer should preserve reusable UI/technical work while realigning the data model and workflows.
+Current element
+ | Direction
+ | Reason
+ |
+Authentication / account shell
+ | KEEP
+ | Useful foundation for internal access.
+ |
+Projects list, search, status shell
+ | KEEP / REWORK
+ | Good navigation pattern; replace margin-centric columns with SPFM financial/attention states.
+ |
+Project identity fields
+ | KEEP / REWORK
+ | Project name/client/status are useful, but project should be linked to QuickBooks rather than manually reconstructing accounting data.
+ |
+“QuickBooks not linked; Phase 2”
+ | CHANGE NOW
+ | QuickBooks is foundational, not a later enhancement.
+ |
+Doors & hardware with manual unit cost/unit price
+ | REMOVE FROM CORE
+ | Not part of the approved SPFM financial workflow.
+ |
+Labor, subcontractors, overhead manual entry
+ | REMOVE FROM CORE
+ | This turns SPFM into a job-costing tool; not the approved purpose.
+ |
+Gross margin / net profit dashboard
+ | DEFER / REPLACE
+ | Not the primary operational need; home should prioritize Work Queue and financial exceptions.
+ |
+Calculate button
+ | REWORK
+ | Core financial state should derive from synchronized records + shipment/decision data, not a generic manual calculation form.
+ |
+10. UX principles
+Decision-first: show the user what needs attention and what decision must be made.
+One-minute project understanding: a project’s financial state should be obvious without hunting through screens.
+Minimal duplicate entry: do not ask users to retype QuickBooks data.
+Progressive detail: summary first; source transactions and supporting details available when needed.
+Exception over noise: do not fill the Work Queue with informational items that require no action.
+Normal business terminology: avoid unnecessary accounting-system jargon or invented terminology.
+No feature creep: evaluate additions by whether they make today’s financial work faster and clearer.
+11. Technical direction already established
+The implementation work completed before the developer handoff established a reasonable technical foundation. The product realignment does not require discarding that foundation unless the developer identifies a concrete technical reason.
+Backend: ASP.NET Core API foundation.
+Frontend: Next.js / React application foundation.
+Authentication: Microsoft Entra / MSAL direction with protected API endpoints.
+Previously established backend endpoints included health and current-user/authentication plumbing.
+The Alpha architecture should remain deliberately simple: build only enough infrastructure to support the real end-to-end financial workflow.
+12. Acceptance criteria for realignment
+Before substantial additional development, the developer should be able to demonstrate the following flow with a real or representative Shield project:
+A QuickBooks customer/accepted estimate (or equivalent contract basis), invoices and payments are imported or synchronized.
+Those records are grouped into a single SPFM Project without manual re-keying of the financial amounts.
+The Project page correctly displays contract value, invoiced, collected, A/R, deferred and recognized revenue.
+A shipment can be recorded; if it is partial, the user can resolve the allocation required for recognition.
+Pre-shipment cash remains deferred until the appropriate recognition trigger is satisfied.
+Any ambiguity appears in the Work Queue with a specific action, and resolving it updates the Project state.
+The project can be saved, closed, reopened and edited with all links and decisions intact.
+An unpaid balance remains visible and actionable; a fully paid, fully recognized, closed project becomes archive-eligible after 7 days.
+The system can produce the core information needed for accounting-period review without relying on the manual job-costing fields in the current prototype.
+Stop condition  Do not spend significant time polishing profitability dashboards, manual cost-entry forms, generic project-management features or secondary administration until the above flow works end to end on real Shield data.
+ |
+13. Decision status: final, superseded, future
+Status
+ | Decision
+ |
+FINAL
+ | SPFM is a project-centric financial operations layer over QuickBooks.
+ |
+FINAL
+ | QuickBooks is the accounting source; SPFM organizes projects and resolves financial decisions.
+ |
+FINAL
+ | Shipment is the key operational trigger for the approved revenue-recognition workflow; pre-shipment receipts may remain deferred.
+ |
+FINAL
+ | Work Queue is the home/operational center and must be decision-based.
+ |
+FINAL
+ | Partial shipments, A/R/collections, overrides, financial review and accountant reporting belong in V1 direction.
+ |
+FINAL
+ | Auto-archive only after closed + fully recognized + fully paid, with a 7-day delay.
+ |
+FINAL
+ | No feature creep; every addition must reduce or clarify real financial work.
+ |
+SUPERSEDED / WRONG DIRECTION
+ | SPFM as a manual job-costing, labor/overhead and gross-margin calculator.
+ |
+SUPERSEDED / WRONG DIRECTION
+ | QuickBooks integration deferred to Phase 2.
+ |
+SEPARATE PRODUCT
+ | Door configuration, pricing and weight-calculation tools.
+ |
+POST-ALPHA
+ | Broad analytics dashboards, advanced permissions/admin, full audit UI, extensive file handling and UI polish.
+ |
+Developer instruction: Treat this document as the source of truth for product intent. Where the current implementation conflicts with it, preserve reusable technical/UI work but realign the workflow and data model before expanding scope.

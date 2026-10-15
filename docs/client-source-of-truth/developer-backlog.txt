@@ -1,0 +1,416 @@
+SPFM
+Developer Backlog & Build Order
+SOURCE OF TRUTH - IMPLEMENTATION BACKLOG
+Shield Security Doors
+Version 1.0  |  October 15, 2026
+Developer directive
+Build the tickets in the order listed. Do not substitute generic project-management or job-costing features for the financial workflows defined here. If a behavior is not specified, ask before inventing it. Demonstrate each checkpoint in the deployed test environment before moving to the next phase.
+ |
+Companion document: SPFM Design & Product Requirements - Source of Truth
+1. How to use this backlog
+This backlog converts the approved SPFM product design into an ordered implementation plan. Each ticket has a specific business purpose, required behavior, and acceptance criteria. The sequence is intentional: later tickets depend on the domain model, QuickBooks synchronization, project linking, and financial calculation foundation established earlier.
+Definition of done
+A ticket is not complete because a screen exists. It is complete only when its acceptance criteria work with persisted data in the deployed test environment and the result is consistent after refresh/reopen.
+ |
+Non-negotiable product rules
+QuickBooks is the accounting system of record; SPFM must minimize duplicate financial data entry.
+SPFM organizes financial activity around Projects and adds operational facts/decisions QuickBooks does not know, especially shipment and recognition state.
+The Work Queue is the operational home and must show specific financial decisions or follow-up, not generic tasks.
+Shipment is the approved operational trigger for the revenue-recognition workflow; pre-shipment receipts may remain deferred.
+Partial shipments require explicit allocation or a deterministic allocation rule; the system must not silently guess.
+Manual job-costing fields (labor, subcontractor cost, overhead, gross-margin calculator) are not part of the core Alpha workflow.
+Door configuration, pricing and weight calculators are separate products and are outside this backlog.
+2. Build sequence at a glance
+Phase
+ | Objective
+ | Tickets
+ |
+Phase 0
+ | Realignment and data model
+ | Tickets 1-3
+ |
+Phase 1
+ | QuickBooks foundation and project linking
+ | Tickets 4-6
+ |
+Phase 2
+ | Project financial workspace
+ | Tickets 7-10
+ |
+Phase 3
+ | Recognition and partial-shipment workflows
+ | Tickets 11-14
+ |
+Phase 4
+ | Work Queue, A/R, exceptions and overrides
+ | Tickets 15-18
+ |
+Phase 5
+ | Financial review, reporting, migration and archive
+ | Tickets 19-22
+ |
+Phase 6
+ | Real-project validation and internal Alpha release
+ | Tickets 23-24
+ |
+3. Detailed coding tickets
+Ticket 1: Freeze the current wrong-direction workflow and preserve reusable shell
+Phase 0 - Realignment  |  Dependencies: None
+Purpose. Prevent additional development from deepening the manual job-costing architecture while preserving useful authentication, navigation, styling and project-shell work.
+Required behavior / scope
+Create a branch/tag of the current prototype before realignment so existing work is recoverable.
+Remove or hide from the primary workflow: manual doors/hardware unit cost/unit price, labor cost, subcontractor cost, other direct cost, overhead and gross-margin/net-profit calculation screens.
+Keep authentication/account shell, reusable layout components, projects navigation/search shell, and any generic API/data infrastructure that does not conflict with the approved product model.
+Replace the current Overview entry point with a placeholder Work Queue route that later tickets will populate.
+Acceptance criteria
+PASS: User no longer lands in a gross-margin/job-costing dashboard.
+PASS: Current prototype can still be recovered from source control.
+PASS: Authentication and basic navigation continue to work.
+PASS: Primary navigation includes Work Queue, Projects and Financial Review (Financial Review may be disabled until Ticket 19).
+Implementation note
+Do not spend time polishing replacement screens yet; this ticket is a controlled reset.
+ |
+Ticket 2: Implement the SPFM domain model and database migrations
+Phase 0 - Realignment  |  Dependencies: Ticket 1
+Purpose. Establish a data model that represents the approved financial workflow before more UI is built.
+Required behavior / scope
+Create/confirm entities for Project, QuickBooksEntityLink, Shipment, ShipmentAllocation, RecognitionDecision, ManualOverride, AccountingPeriod/FinancialReview, and ProjectStatus metadata.
+Project must support stable internal ID, display/project number, customer reference, contract basis reference, lifecycle status, created/updated timestamps and archive eligibility state.
+QuickBooksEntityLink must support source type, QuickBooks source ID, source company/realm identifier, sync timestamps and link status.
+Shipment must support shipment date, status, full/partial indicator, optional note/reference and persisted allocation data.
+RecognitionDecision and ManualOverride must preserve decision date, accounting period/effective date, amount where applicable, reason/context, actor and timestamp.
+Use migrations; do not rely on ephemeral/in-memory state.
+Acceptance criteria
+PASS: Database migrations create the required schema from a clean environment.
+PASS: A project can be created and persisted with linked placeholder source records and shipment/decision records.
+PASS: All IDs and relationships survive application restart/redeploy against the configured database.
+PASS: No core financial metric is stored only as an editable user-entered field when it can be derived from source transactions and SPFM decisions.
+Ticket 3: Create a financial calculation service with explicit formulas
+Phase 0 - Realignment  |  Dependencies: Ticket 2
+Purpose. Centralize the project financial calculations so every screen and workflow uses the same rules.
+Required behavior / scope
+Implement a backend/service-layer calculation for Contract Value, Invoiced, Remaining to Invoice, Collected, Accounts Receivable, Deferred Revenue and Recognized Revenue.
+Inputs must come from linked source records plus persisted shipment/recognition decisions and explicit overrides.
+Define clear handling for credits/negative transactions if encountered; if not implemented in Alpha, flag them as exceptions rather than miscalculate.
+Expose a single project-financial-summary API contract used by the Project page and Work Queue.
+Add automated unit tests for the core arithmetic and at least the scenarios: no invoices, invoiced/unpaid, paid before shipment, full shipment, partial shipment, fully paid/fully recognized.
+Acceptance criteria
+PASS: Given the same source records and decisions, all consumers receive the same financial summary.
+PASS: Pre-shipment collection does not automatically increase Recognized Revenue.
+PASS: A/R equals unpaid invoiced balance under the implemented source-record rules.
+PASS: Test suite covers the approved baseline scenarios and passes in CI/local developer workflow.
+Ticket 4: Implement QuickBooks connection and read-only authentication
+Phase 1 - QuickBooks Foundation  |  Dependencies: Tickets 2-3
+Purpose. Make QuickBooks a foundational data source rather than a Phase 2 add-on.
+Required behavior / scope
+Implement the Intuit/QuickBooks OAuth connection required for the Shield company file/environment.
+Store refresh/access credentials securely using environment/secret storage appropriate to the deployment.
+Provide connection state in the application (connected, expired/error, last successful sync).
+Alpha scope is read-only from QuickBooks unless a later approved ticket explicitly requires a write-back.
+Handle token expiration/re-authentication without corrupting project data.
+Acceptance criteria
+PASS: Authorized user can connect the designated QuickBooks company.
+PASS: Connection persists across browser sessions and application restarts according to token rules.
+PASS: Expired/invalid authorization produces a clear reconnect state, not a silent failure.
+PASS: No manual financial entry is required merely because QuickBooks is connected.
+Ticket 5: Synchronize core QuickBooks records
+Phase 1 - QuickBooks Foundation  |  Dependencies: Ticket 4
+Purpose. Import the minimum source records needed to construct the project financial picture.
+Required behavior / scope
+Sync Customers, accepted Estimates/Proposals (or the available QuickBooks equivalent used as contract basis), Invoices and Payments.
+Preserve QuickBooks IDs, document numbers, dates, amounts, customer references, status and last-modified/sync metadata.
+Make synchronization idempotent: rerunning sync updates existing source records rather than duplicating them.
+Capture sync errors at record/batch level and expose them for troubleshooting.
+Do not yet attempt broad accounting-object coverage outside the minimum Alpha data set.
+Acceptance criteria
+PASS: Running sync twice does not create duplicate source records.
+PASS: A known QuickBooks customer, estimate/proposal, invoice and payment can be located by their QuickBooks identifiers after sync.
+PASS: Updated QuickBooks amounts/statuses are reflected after a subsequent sync.
+PASS: Sync errors are visible to the developer/admin and do not silently drop data.
+Ticket 6: Build project creation/linking around QuickBooks records
+Phase 1 - QuickBooks Foundation  |  Dependencies: Ticket 5
+Purpose. Create the core SPFM Project by grouping the accepted contract basis and related financial records without re-keying them.
+Required behavior / scope
+Allow creation of a Project by selecting an accepted estimate/proposal or other approved contract-basis record from synchronized QuickBooks data.
+Automatically associate clearly related invoices/payments where deterministic.
+Where a relationship is ambiguous, create an unresolved matching state for later Work Queue resolution rather than guessing.
+Allow manual linking/unlinking by an authorized internal user with traceable context.
+Project identity may include an SPFM display name/project number independent of QuickBooks document numbers.
+Acceptance criteria
+PASS: User can create a Project from a synchronized QuickBooks contract-basis record without typing the financial amount.
+PASS: Linked invoices/payments appear on the Project after creation.
+PASS: Ambiguous records remain visibly unresolved and are not silently assigned.
+PASS: Closing and reopening the Project preserves all source links.
+Ticket 7: Rebuild the Projects list around financial attention states
+Phase 2 - Project Financial Workspace  |  Dependencies: Ticket 6
+Purpose. Make the Projects workspace useful for finding projects and understanding financial completeness, not gross margin.
+Required behavior / scope
+Retain search and basic filters from the prototype where reusable.
+Replace margin/cost columns with concise fields such as Project, Customer, Contract Value, A/R, Recognition State, Financial/Attention Status and Last Updated.
+Provide filters for active/closed/archived, unpaid A/R, unresolved decisions and recognition incomplete.
+Each row opens the Project page.
+Do not add broad analytics or advanced admin controls in Alpha.
+Acceptance criteria
+PASS: User can find a project by name, customer or project number.
+PASS: An unpaid project is visually distinguishable from a fully paid project.
+PASS: A project with unresolved recognition/matching issues is visibly flagged.
+PASS: No manual profitability metric is required to use the Projects list.
+Ticket 8: Build the Project financial summary header
+Phase 2 - Project Financial Workspace  |  Dependencies: Tickets 3, 6
+Purpose. Allow a user to understand a project’s financial position in roughly one minute.
+Required behavior / scope
+At the top of the Project page show Customer, Project identity, lifecycle status and contract basis.
+Show calculated: Contract Value, Invoiced, Remaining to Invoice, Collected, Accounts Receivable, Deferred Revenue and Recognized Revenue.
+Values must come from the shared calculation service, not editable UI fields.
+Provide source/refresh context such as last QuickBooks sync and any unresolved-data warning that affects accuracy.
+Acceptance criteria
+PASS: Opening a linked project immediately displays all seven core financial metrics.
+PASS: Refreshing/reopening produces the same values from persisted/source data.
+PASS: If a required source link is unresolved, the page clearly indicates that the summary may be incomplete rather than fabricating a total.
+Ticket 9: Add linked QuickBooks activity to the Project page
+Phase 2 - Project Financial Workspace  |  Dependencies: Ticket 8
+Purpose. Give the user transparent access to the source transactions behind the project totals.
+Required behavior / scope
+Add sections/tabs for Contract Basis, Invoices and Payments.
+Show document number, date, status, amount, open balance where available, and QuickBooks source identifier/link if practical.
+Data is read-only in Alpha unless linking action is specifically required.
+Provide a clear indication of unmatched/ambiguous source records associated with the customer/project context.
+Acceptance criteria
+PASS: User can reconcile each displayed financial summary amount to the underlying synchronized documents.
+PASS: Invoice/payment lists survive refresh and match the last successful sync.
+PASS: Unmatched/ambiguous activity is visibly separated from confirmed linked activity.
+Ticket 10: Add project persistence, reopen/edit behavior and status lifecycle
+Phase 2 - Project Financial Workspace  |  Dependencies: Tickets 8-9
+Purpose. Ensure SPFM can be used as an operational system over time, not as a one-session calculator.
+Required behavior / scope
+Persist project identity, source links, shipment state, decisions, overrides and lifecycle status.
+Allow safe editing of SPFM-owned fields while keeping QuickBooks-owned financial fields read-only.
+Support lifecycle states at minimum: Active/Open, Closed, Archived (plus any technical draft state genuinely needed).
+On reopen, recalculate derived metrics from current source data + persisted SPFM decisions.
+Acceptance criteria
+PASS: Create/open/edit/close/reopen workflow works without data loss.
+PASS: QuickBooks-owned values cannot be overwritten by typing into SPFM.
+PASS: Changing an SPFM-owned field persists and appears after reload.
+PASS: Closed projects remain available until archive rules are satisfied.
+Ticket 11: Implement shipment entry and full-shipment workflow
+Phase 3 - Recognition & Shipments  |  Dependencies: Ticket 10
+Purpose. Add the operational fact QuickBooks does not know and use it to drive revenue recognition.
+Required behavior / scope
+Add Shipment section to Project page with ability to record shipment date, status, full/partial indicator and optional reference/note.
+For a simple full shipment with no ambiguity, allow the recognition engine to determine the recognized amount according to the approved project value/period rule.
+Persist shipment history; do not replace prior shipment records when additional shipments occur.
+Changing/correcting a shipment must either be traceable or handled via an explicit correction/override path.
+Acceptance criteria
+PASS: User can record a full shipment and see it after reopen.
+PASS: Full shipment updates Recognized/Deferred values according to the defined recognition rules.
+PASS: Pre-shipment receipts remain deferred until the relevant shipment exists.
+PASS: Shipment date/effective period is available to later Financial Review.
+Ticket 12: Implement deferred-versus-recognized revenue engine
+Phase 3 - Recognition & Shipments  |  Dependencies: Ticket 11
+Purpose. Make the central SPFM accounting workflow deterministic where possible and explicit where judgment is required.
+Required behavior / scope
+Calculate deferred and recognized revenue from linked financial activity plus shipment/recognition facts.
+Cash receipt alone must not cause recognition before the relevant shipment trigger.
+For straightforward fully shipped projects, recognition should occur without redundant manual steps where the rule is deterministic.
+If source data or shipment context is insufficient, return a specific unresolved reason that can become a Work Queue item.
+Keep recognition decisions/effective dates traceable.
+Acceptance criteria
+PASS: Paid-before-shipment project shows collected cash but zero/appropriate recognized revenue and corresponding deferred amount.
+PASS: Recording the applicable shipment moves the appropriate value from deferred to recognized.
+PASS: Recognition results remain identical after refresh/reopen.
+PASS: Ambiguous situations produce an explicit unresolved state instead of an arbitrary answer.
+Ticket 13: Build partial-shipment allocation workflow
+Phase 3 - Recognition & Shipments  |  Dependencies: Ticket 12
+Purpose. Handle the primary non-trivial case that motivated SPFM: a project ships in stages and only the shipped portion should be recognized.
+Required behavior / scope
+When a Shipment is marked partial, open a purpose-built allocation interface.
+Allow the user to allocate a value/percentage of project/contract performance to the shipment, subject to validation against remaining allocable value.
+Show previously recognized value, proposed allocation, remaining deferred/unallocated value and resulting financial state before save.
+Persist each shipment allocation separately so multiple partial shipments can accumulate.
+Prevent total allocated/recognized project value from exceeding the approved contract basis unless an explicit override is recorded.
+Acceptance criteria
+PASS: Partial shipment cannot be finalized without a valid allocation unless a deterministic allocation rule has been approved and implemented.
+PASS: Saving a partial allocation updates Recognized and Deferred values immediately.
+PASS: A second partial shipment recognizes only additional allocated value and preserves the first shipment.
+PASS: Invalid over-allocation is blocked with a clear validation message.
+Ticket 14: Add recognition-period/effective-date decision handling
+Phase 3 - Recognition & Shipments  |  Dependencies: Tickets 12-13
+Purpose. Support period-close accuracy when shipment and accounting timing require an explicit effective recognition month/date.
+Required behavior / scope
+Persist recognition effective date/accounting period for recognition events/decisions.
+Default to the deterministic shipment date/period where appropriate, but allow an explicit decision path when the rule requires human confirmation.
+Changes to an effective period must be traceable and must not silently rewrite prior history.
+Expose recognition events by period for Financial Review.
+Acceptance criteria
+PASS: Each recognized amount can be associated with an effective accounting period/date.
+PASS: Project financial summary can report total recognized while Financial Review can segment recognition by period.
+PASS: Changing a period through an approved correction path preserves who/when/why.
+Ticket 15: Build the Work Queue framework and make it the home screen
+Phase 4 - Work Queue & Exceptions  |  Dependencies: Tickets 12-14
+Purpose. Create the operational center of SPFM: a short list of real financial decisions or follow-up that require action.
+Required behavior / scope
+Home route displays Work Queue, not profitability analytics.
+Derive/generate queue items from unresolved system states rather than requiring users to create generic tasks.
+Each item must include Project, issue type, concise explanation, relevant amount/context, age/date and a single primary action.
+Clicking the primary action opens the specific resolution workflow for that issue, not a generic project drawer.
+Queue item disappears only when the underlying issue is resolved.
+Implement basic ownership/snooze only if required to operate the Alpha; otherwise defer.
+Acceptance criteria
+PASS: At least the issue types from Tickets 16-18 can appear automatically in the queue.
+PASS: Resolving the underlying issue removes the item after refresh.
+PASS: Merely opening/viewing an item does not mark it resolved.
+PASS: Home screen contains no gross-margin dashboard dependency.
+Ticket 16: Add unmatched/ambiguous QuickBooks record resolution
+Phase 4 - Work Queue & Exceptions  |  Dependencies: Ticket 15
+Purpose. Prevent SPFM from silently assigning uncertain accounting activity to the wrong project.
+Required behavior / scope
+Generate a Work Queue item when a synchronized invoice/payment/contract-basis record cannot be confidently linked to a project.
+Provide a specific resolution screen to link the record to an existing project, create/link a new project where appropriate, or explicitly mark it non-project/ignored with reason.
+Persist the resolution and remove the ambiguity from future syncs unless the source record materially changes.
+Make manual unlink/reassignment traceable.
+Acceptance criteria
+PASS: A deliberately ambiguous test record appears in Work Queue.
+PASS: User can resolve it to the correct project and the project financial summary updates.
+PASS: The item does not reappear on the next sync unless the source relationship changes.
+PASS: No record is auto-assigned when confidence/rules are insufficient.
+Ticket 17: Add Accounts Receivable and collections attention workflow
+Phase 4 - Work Queue & Exceptions  |  Dependencies: Tickets 5, 15
+Purpose. Keep unpaid balances visible in project context and surface collection attention without turning SPFM into a CRM.
+Required behavior / scope
+Calculate/display open A/R from linked invoices/payments.
+Identify overdue/unpaid invoices using available due-date/status data.
+Generate a Work Queue item when the approved collections condition is met.
+Resolution workflow should allow review of source invoice/payment context and record an SPFM follow-up status/note only if needed; do not duplicate QuickBooks receivable balances.
+Unpaid balances must prevent auto-archive.
+Acceptance criteria
+PASS: Project with an unpaid invoice shows accurate A/R and overdue state.
+PASS: Qualifying overdue balance appears in Work Queue.
+PASS: Receipt of payment in QuickBooks clears/reduces the A/R after sync.
+PASS: Project cannot auto-archive while A/R remains greater than zero.
+Ticket 18: Implement explicit overrides and correction audit trail
+Phase 4 - Work Queue & Exceptions  |  Dependencies: Tickets 12-17
+Purpose. Allow exceptional financial situations to be resolved without corrupting source-of-truth data or hiding judgment.
+Required behavior / scope
+Create a controlled override/correction action for approved SPFM-derived decisions (for example recognition allocation/effective period), not for editing QuickBooks documents.
+Require reason/context and record actor/timestamp, prior value and new value where applicable.
+Display active overrides/corrections on the Project page.
+Ensure calculations consume the approved override consistently.
+Do not implement a broad admin-edit-anything interface.
+Acceptance criteria
+PASS: User cannot silently overwrite a derived financial value.
+PASS: Approved override changes the resulting calculation and persists.
+PASS: Project page shows that an override exists and why.
+PASS: Original source transaction remains unchanged.
+Ticket 19: Build Accounting Period / Financial Review workspace
+Phase 5 - Review, Reporting & Archive  |  Dependencies: Tickets 14-18
+Purpose. Provide a controlled process for confirming period readiness before accounting close.
+Required behavior / scope
+Create a Financial Review workspace organized by accounting period/month.
+Show recognition events, deferred balances and unresolved issues that affect the selected period.
+Block or clearly flag period completion when material unresolved queue items/decisions affect that period.
+Allow a period review status (Open/In Review/Complete or similarly minimal states) with reviewer/timestamp.
+Aggregate from project-level source/decision data rather than maintaining a separate manual ledger.
+Acceptance criteria
+PASS: User can select a period and see the projects/recognition activity relevant to it.
+PASS: An unresolved recognition/partial-shipment issue affecting the period is visible and prevents a false clean-close state.
+PASS: Completing review is persisted with reviewer and timestamp.
+PASS: Project changes that materially affect an already-reviewed open period are reflected or flagged.
+Ticket 20: Generate accountant-ready period reporting/export
+Phase 5 - Review, Reporting & Archive  |  Dependencies: Ticket 19
+Purpose. Give Shield/accounting staff a concise output of the financial decisions SPFM is managing.
+Required behavior / scope
+Provide an export/report for a selected period summarizing recognized revenue events, deferred revenue balances, relevant project identifiers and explicit adjustments/overrides.
+Include enough source-document references to reconcile back to QuickBooks.
+CSV and/or PDF/XLSX format is acceptable for Alpha/V1 depending on implementation cost; choose the simplest reliable format after approval.
+Report must be reproducible from persisted source data and decisions.
+Acceptance criteria
+PASS: User can generate a report for a selected period.
+PASS: Report totals reconcile to the Financial Review workspace.
+PASS: Each material line can be traced to a project and source/recognition context.
+PASS: Re-running the report without data changes produces the same totals.
+Ticket 21: Implement historical project migration/linking workflow
+Phase 5 - Review, Reporting & Archive  |  Dependencies: Tickets 6, 12-19
+Purpose. Allow SPFM to become useful immediately without requiring all projects to originate after go-live.
+Required behavior / scope
+Provide a pragmatic way to create/link projects from older synchronized QuickBooks records.
+Allow entry of missing historical shipment/recognition context where QuickBooks cannot supply it.
+Flag incomplete historical states rather than forcing fabricated precision.
+Provide a simple migration status so partially migrated projects can be distinguished from current fully managed projects.
+Acceptance criteria
+PASS: At least one historical Shield project can be linked from older QuickBooks records.
+PASS: User can record necessary historical shipment/recognition facts and reach a coherent financial state.
+PASS: Incomplete migration remains visibly flagged until resolved.
+PASS: Historical records use the same financial calculation service as current projects.
+Ticket 22: Implement project close and 7-day auto-archive eligibility
+Phase 5 - Review, Reporting & Archive  |  Dependencies: Tickets 10, 17-19
+Purpose. Keep active financial work visible while automatically clearing truly complete projects from day-to-day attention.
+Required behavior / scope
+A project becomes archive-eligible only when it is Closed, fully paid (A/R = 0), fully recognized (no deferred/unrecognized balance under the approved rules), and has no unresolved material decisions.
+Apply a 7-day delay after the project first satisfies all eligibility conditions.
+If the project becomes ineligible during the delay, reset/cancel archive eligibility.
+Archived projects remain searchable and can be viewed; restore/unarchive can be deferred unless operationally necessary.
+Acceptance criteria
+PASS: Closed + paid + fully recognized project does not archive immediately.
+PASS: After 7 days of continuous eligibility it becomes Archived automatically or through a scheduled internal job.
+PASS: Any unpaid balance or unresolved recognition issue prevents archival.
+PASS: Archived project remains accessible by search/history.
+Ticket 23: Run real-project end-to-end validation against Shield data
+Phase 6 - Alpha Validation  |  Dependencies: Tickets 4-22
+Purpose. Prove the application solves the actual SPFM workflow before expanding scope or polishing secondary features.
+Required behavior / scope
+Select at least 2-3 real or sanitized representative Shield projects covering: paid-before-shipment, fully shipped/recognized, partial shipment, and unpaid A/R where possible.
+Run QuickBooks sync, project linking, shipment entry, recognition, Work Queue resolution, reopen/edit and Financial Review.
+Compare core metrics to source QuickBooks records and the expected accounting treatment.
+Log defects as blocking/non-blocking and fix all blocking financial correctness issues before Alpha release.
+Acceptance criteria
+PASS: Every required Alpha flow works on representative real data without manual re-keying of QuickBooks amounts.
+PASS: Core financial metrics reconcile to the test evidence.
+PASS: Partial shipment and pre-shipment-cash scenarios behave as designed.
+PASS: No blocker remains that could cause materially wrong recognition or A/R presentation.
+Ticket 24: Deploy the usable internal Alpha and freeze nonessential scope
+Phase 6 - Alpha Validation  |  Dependencies: Ticket 23
+Purpose. Put the real end-to-end financial workflow into Shield’s hands quickly and prevent feature creep before operational feedback.
+Required behavior / scope
+Deploy the validated build to the agreed internal environment with production-like database persistence and secure configuration.
+Provide minimal operational logging for auth, sync and calculation/workflow errors.
+Create a short release note listing implemented workflows and known limitations.
+Defer advanced dashboards, granular permissions, mobile polish, broad analytics, generic CRM/project management, full document management and extensive admin tooling until real Alpha usage justifies them.
+Acceptance criteria
+PASS: Shield can sign in and execute the approved Alpha workflow in the deployed environment.
+PASS: Data persists across deployments according to the hosting/database setup.
+PASS: QuickBooks connection/sync errors are diagnosable.
+PASS: The release is explicitly labeled Alpha with a known-limitations list and no unresolved core financial correctness blocker.
+4. Required demo checkpoints
+Checkpoint A - after Ticket 6
+Demonstrate QuickBooks connection, sync and creation/linking of one Project from real or representative QuickBooks records. No manual re-keying of contract/invoice/payment amounts.
+ |
+Checkpoint B - after Ticket 10
+Demonstrate Project list + Project page showing contract, invoiced, collected, A/R, deferred and recognized values from persisted data; close/reopen without loss.
+ |
+Checkpoint C - after Ticket 14
+Demonstrate paid-before-shipment, full-shipment and partial-shipment recognition scenarios, including persisted allocation and effective period.
+ |
+Checkpoint D - after Ticket 18
+Demonstrate Work Queue generation and resolution for at least unmatched activity, overdue A/R and recognition ambiguity; show explicit override audit trail.
+ |
+Checkpoint E - after Ticket 22
+Demonstrate period Financial Review, export/report, historical migration example and archive eligibility logic.
+ |
+Checkpoint F - after Ticket 24
+Demonstrate the deployed internal Alpha end to end with representative Shield projects.
+ |
+5. Explicitly deferred until after Alpha
+Gross-margin/job-costing dashboards and manual labor/subcontractor/overhead costing.
+Door configurator, pricing calculator and door-weight calculator integration.
+Generic CRM, tasks, activity feed or broad project-management features.
+Granular roles/permissions beyond safe internal access.
+Advanced analytics dashboards and executive KPI reporting.
+Full document-management/file-management subsystem.
+Highly polished mobile/responsive UI beyond basic usability.
+Extensive administration screens, advanced search/pagination and nonessential customization.
+Broad QuickBooks write-back functionality not specifically approved.
+Large-scale infrastructure/CI/CD work beyond what is necessary for a safe internal Alpha.
+6. Final handoff instruction to developer
+Build instruction
+Treat this backlog and the companion SPFM Design & Product Requirements document as the product source of truth. Build in ticket order, demonstrate the required checkpoints, and ask before changing business logic or introducing a new workflow. Reuse existing technical/UI work where it helps, but where the current prototype conflicts with these requirements, these requirements control.
+ |
