@@ -1,0 +1,416 @@
+SPFM
+Exact Coding Prompts& Demo Gates
+DEVELOPER EXECUTION COMPANION
+Shield Security Doors
+Version 1.0  |  October 15, 2026
+Companion documents
+SPFM Design & Product Requirements - Source of Truth
+SPFM Developer Backlog & Build Order - Source of Truth
+Execution rule: Send one ticket prompt at a time. The developer must demo the checkpoint and receive approval before beginning the next ticket. If a business rule is ambiguous, the developer must ask rather than inventing behavior.
+ |
+How to use these prompts
+Each ticket below is written as a standalone copy/paste instruction. It intentionally repeats the core product guardrails so scope does not drift between tickets.
+The prompts assume the established SPFM technical foundation: Next.js/React frontend, ASP.NET Core API backend, Microsoft Entra/MSAL authentication direction, and a persistent database. Preserve that foundation unless a ticket or a concrete technical constraint requires otherwise.
+The developer should work in a feature branch (or equivalent isolated change set), deploy a testable build, and provide evidence that the acceptance criteria pass. No ticket is considered complete merely because code has been written.
+Standing instructions for every ticket
+Treat the Product Requirements and Developer Backlog as controlling specifications. Where existing code conflicts with them, preserve reusable technical/UI work but implement the approved SPFM behavior.
+Do not reintroduce manual job-costing, gross-margin, labor/subcontractor/overhead workflows into the Alpha unless explicitly approved in writing.
+QuickBooks is the accounting system of record. Do not require users to re-key financial data that is available from QuickBooks.
+Automate deterministic behavior. Surface ambiguous financial decisions to a human; do not silently guess.
+Keep the Alpha deliberately narrow. Do not add dashboards, admin systems, mobile polish, CRM, manufacturing, door configuration, pricing, or weight-calculator functionality unless a ticket explicitly calls for it.
+Before coding, inspect the existing implementation and state any technical conflict or ambiguity. If the issue changes product behavior, stop and ask before proceeding.
+At completion, provide: changed files/components, schema/API changes, migration notes, tests run/results, deployed test URL, and known limitations.
+Demo gate
+Do not begin the next ticket until Samuel has reviewed the deployed checkpoint and explicitly approved moving on.
+ |
+Prompt 01
+Ticket 1: Freeze the current wrong-direction workflow and preserve reusable shell
+Phase 0 - Realignment  |  Dependencies: None
+PURPOSE
+ | Prevent additional development from deepening the manual job-costing architecture while preserving useful authentication, navigation, styling and project-shell work.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 1: Freeze the current wrong-direction workflow and preserve reusable shell. Prevent additional development from deepening the manual job-costing architecture while preserving useful authentication, navigation, styling and project-shell work.REQUIRED IMPLEMENTATION1. Create a branch/tag of the current prototype before realignment so existing work is recoverable.2. Remove or hide from the primary workflow: manual doors/hardware unit cost/unit price, labor cost, subcontractor cost, other direct cost, overhead and gross-margin/net-profit calculation screens.3. Keep authentication/account shell, reusable layout components, projects navigation/search shell, and any generic API/data infrastructure that does not conflict with the approved product model.4. Replace the current Overview entry point with a placeholder Work Queue route that later tickets will populate.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Do not spend time polishing profitability dashboards that will be removed or repurposed.2. Preserve a recoverable branch/tag of the current prototype before destructive realignment.ACCEPTANCE CRITERIA1. User no longer lands in a gross-margin/job-costing dashboard.2. Current prototype can still be recovered from source control.3. Authentication and basic navigation continue to work.4. Primary navigation includes Work Queue, Projects and Financial Review (Financial Review may be disabled until Ticket 19).DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: user no longer lands in a gross-margin/job-costing dashboard.
+Demonstrate: current prototype can still be recovered from source control.
+Demonstrate: authentication and basic navigation continue to work.
+Demonstrate: primary navigation includes Work Queue, Projects and Financial Review (Financial Review may be disabled until Ticket 19).
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 02
+Ticket 2: Implement the SPFM domain model and database migrations
+Phase 0 - Realignment  |  Dependencies: Ticket 1
+PURPOSE
+ | Establish a data model that represents the approved financial workflow before more UI is built.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 2: Implement the SPFM domain model and database migrations. Establish a data model that represents the approved financial workflow before more UI is built.REQUIRED IMPLEMENTATION1. Create/confirm entities for Project, QuickBooksEntityLink, Shipment, ShipmentAllocation, RecognitionDecision, ManualOverride, AccountingPeriod/FinancialReview, and ProjectStatus metadata.2. Project must support stable internal ID, display/project number, customer reference, contract basis reference, lifecycle status, created/updated timestamps and archive eligibility state.3. QuickBooksEntityLink must support source type, QuickBooks source ID, source company/realm identifier, sync timestamps and link status.4. Shipment must support shipment date, status, full/partial indicator, optional note/reference and persisted allocation data.5. RecognitionDecision and ManualOverride must preserve decision date, accounting period/effective date, amount where applicable, reason/context, actor and timestamp.6. Use migrations; do not rely on ephemeral/in-memory state.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Use migrations from a clean database; do not use in-memory-only persistence for core entities.2. Prefer derived financial state over editable totals.ACCEPTANCE CRITERIA1. Database migrations create the required schema from a clean environment.2. A project can be created and persisted with linked placeholder source records and shipment/decision records.3. All IDs and relationships survive application restart/redeploy against the configured database.4. No core financial metric is stored only as an editable user-entered field when it can be derived from source transactions and SPFM decisions.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: database migrations create the required schema from a clean environment.
+Demonstrate: a project can be created and persisted with linked placeholder source records and shipment/decision records.
+Demonstrate: all IDs and relationships survive application restart/redeploy against the configured database.
+Demonstrate: no core financial metric is stored only as an editable user-entered field when it can be derived from source transactions and SPFM decisions.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 03
+Ticket 3: Create a financial calculation service with explicit formulas
+Phase 0 - Realignment  |  Dependencies: Ticket 2
+PURPOSE
+ | Centralize the project financial calculations so every screen and workflow uses the same rules.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 3: Create a financial calculation service with explicit formulas. Centralize the project financial calculations so every screen and workflow uses the same rules.REQUIRED IMPLEMENTATION1. Implement a backend/service-layer calculation for Contract Value, Invoiced, Remaining to Invoice, Collected, Accounts Receivable, Deferred Revenue and Recognized Revenue.2. Inputs must come from linked source records plus persisted shipment/recognition decisions and explicit overrides.3. Define clear handling for credits/negative transactions if encountered; if not implemented in Alpha, flag them as exceptions rather than miscalculate.4. Expose a single project-financial-summary API contract used by the Project page and Work Queue.5. Add automated unit tests for the core arithmetic and at least the scenarios: no invoices, invoiced/unpaid, paid before shipment, full shipment, partial shipment, fully paid/fully recognized.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Keep formulas centralized in one service/API contract; no duplicate calculation logic in React components.2. Treat unsupported credits/edge cases as explicit exceptions rather than forcing incorrect math.ACCEPTANCE CRITERIA1. Given the same source records and decisions, all consumers receive the same financial summary.2. Pre-shipment collection does not automatically increase Recognized Revenue.3. A/R equals unpaid invoiced balance under the implemented source-record rules.4. Test suite covers the approved baseline scenarios and passes in CI/local developer workflow.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: given the same source records and decisions, all consumers receive the same financial summary.
+Demonstrate: pre-shipment collection does not automatically increase Recognized Revenue.
+Demonstrate: a/R equals unpaid invoiced balance under the implemented source-record rules.
+Demonstrate: test suite covers the approved baseline scenarios and passes in CI/local developer workflow.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 04
+Ticket 4: Implement QuickBooks connection and read-only authentication
+Phase 1 - QuickBooks Foundation  |  Dependencies: Tickets 2-3
+PURPOSE
+ | Make QuickBooks a foundational data source rather than a Phase 2 add-on.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 4: Implement QuickBooks connection and read-only authentication. Make QuickBooks a foundational data source rather than a Phase 2 add-on.REQUIRED IMPLEMENTATION1. Implement the Intuit/QuickBooks OAuth connection required for the Shield company file/environment.2. Store refresh/access credentials securely using environment/secret storage appropriate to the deployment.3. Provide connection state in the application (connected, expired/error, last successful sync).4. Alpha scope is read-only from QuickBooks unless a later approved ticket explicitly requires a write-back.5. Handle token expiration/re-authentication without corrupting project data.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. QuickBooks scope for Alpha is read-only.2. Secrets/tokens must not be committed to source control.ACCEPTANCE CRITERIA1. Authorized user can connect the designated QuickBooks company.2. Connection persists across browser sessions and application restarts according to token rules.3. Expired/invalid authorization produces a clear reconnect state, not a silent failure.4. No manual financial entry is required merely because QuickBooks is connected.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: authorized user can connect the designated QuickBooks company.
+Demonstrate: connection persists across browser sessions and application restarts according to token rules.
+Demonstrate: expired/invalid authorization produces a clear reconnect state, not a silent failure.
+Demonstrate: no manual financial entry is required merely because QuickBooks is connected.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 05
+Ticket 5: Synchronize core QuickBooks records
+Phase 1 - QuickBooks Foundation  |  Dependencies: Ticket 4
+PURPOSE
+ | Import the minimum source records needed to construct the project financial picture.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 5: Synchronize core QuickBooks records. Import the minimum source records needed to construct the project financial picture.REQUIRED IMPLEMENTATION1. Sync Customers, accepted Estimates/Proposals (or the available QuickBooks equivalent used as contract basis), Invoices and Payments.2. Preserve QuickBooks IDs, document numbers, dates, amounts, customer references, status and last-modified/sync metadata.3. Make synchronization idempotent: rerunning sync updates existing source records rather than duplicating them.4. Capture sync errors at record/batch level and expose them for troubleshooting.5. Do not yet attempt broad accounting-object coverage outside the minimum Alpha data set.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Sync must be idempotent and preserve QuickBooks IDs/last-modified metadata.ACCEPTANCE CRITERIA1. Running sync twice does not create duplicate source records.2. A known QuickBooks customer, estimate/proposal, invoice and payment can be located by their QuickBooks identifiers after sync.3. Updated QuickBooks amounts/statuses are reflected after a subsequent sync.4. Sync errors are visible to the developer/admin and do not silently drop data.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: running sync twice does not create duplicate source records.
+Demonstrate: a known QuickBooks customer, estimate/proposal, invoice and payment can be located by their QuickBooks identifiers after sync.
+Demonstrate: updated QuickBooks amounts/statuses are reflected after a subsequent sync.
+Demonstrate: sync errors are visible to the developer/admin and do not silently drop data.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 06
+Ticket 6: Build project creation/linking around QuickBooks records
+Phase 1 - QuickBooks Foundation  |  Dependencies: Ticket 5
+PURPOSE
+ | Create the core SPFM Project by grouping the accepted contract basis and related financial records without re-keying them.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 6: Build project creation/linking around QuickBooks records. Create the core SPFM Project by grouping the accepted contract basis and related financial records without re-keying them.REQUIRED IMPLEMENTATION1. Allow creation of a Project by selecting an accepted estimate/proposal or other approved contract-basis record from synchronized QuickBooks data.2. Automatically associate clearly related invoices/payments where deterministic.3. Where a relationship is ambiguous, create an unresolved matching state for later Work Queue resolution rather than guessing.4. Allow manual linking/unlinking by an authorized internal user with traceable context.5. Project identity may include an SPFM display name/project number independent of QuickBooks document numbers.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Do not silently link ambiguous records. Route ambiguity to an unresolved state that Ticket 16 can resolve.ACCEPTANCE CRITERIA1. User can create a Project from a synchronized QuickBooks contract-basis record without typing the financial amount.2. Linked invoices/payments appear on the Project after creation.3. Ambiguous records remain visibly unresolved and are not silently assigned.4. Closing and reopening the Project preserves all source links.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: user can create a Project from a synchronized QuickBooks contract-basis record without typing the financial amount.
+Demonstrate: linked invoices/payments appear on the Project after creation.
+Demonstrate: ambiguous records remain visibly unresolved and are not silently assigned.
+Demonstrate: closing and reopening the Project preserves all source links.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 07
+Ticket 7: Rebuild the Projects list around financial attention states
+Phase 2 - Project Financial Workspace  |  Dependencies: Ticket 6
+PURPOSE
+ | Make the Projects workspace useful for finding projects and understanding financial completeness, not gross margin.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 7: Rebuild the Projects list around financial attention states. Make the Projects workspace useful for finding projects and understanding financial completeness, not gross margin.REQUIRED IMPLEMENTATION1. Retain search and basic filters from the prototype where reusable.2. Replace margin/cost columns with concise fields such as Project, Customer, Contract Value, A/R, Recognition State, Financial/Attention Status and Last Updated.3. Provide filters for active/closed/archived, unpaid A/R, unresolved decisions and recognition incomplete.4. Each row opens the Project page.5. Do not add broad analytics or advanced admin controls in Alpha.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Reuse the current project search/filter shell where practical, but remove gross-margin/calculation-state framing.ACCEPTANCE CRITERIA1. User can find a project by name, customer or project number.2. An unpaid project is visually distinguishable from a fully paid project.3. A project with unresolved recognition/matching issues is visibly flagged.4. No manual profitability metric is required to use the Projects list.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: user can find a project by name, customer or project number.
+Demonstrate: an unpaid project is visually distinguishable from a fully paid project.
+Demonstrate: a project with unresolved recognition/matching issues is visibly flagged.
+Demonstrate: no manual profitability metric is required to use the Projects list.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 08
+Ticket 8: Build the Project financial summary header
+Phase 2 - Project Financial Workspace  |  Dependencies: Tickets 3, 6
+PURPOSE
+ | Allow a user to understand a project’s financial position in roughly one minute.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 8: Build the Project financial summary header. Allow a user to understand a project’s financial position in roughly one minute.REQUIRED IMPLEMENTATION1. At the top of the Project page show Customer, Project identity, lifecycle status and contract basis.2. Show calculated: Contract Value, Invoiced, Remaining to Invoice, Collected, Accounts Receivable, Deferred Revenue and Recognized Revenue.3. Values must come from the shared calculation service, not editable UI fields.4. Provide source/refresh context such as last QuickBooks sync and any unresolved-data warning that affects accuracy.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. The project header should be understandable in roughly one minute and should not require scrolling through source transactions to understand the financial position.ACCEPTANCE CRITERIA1. Opening a linked project immediately displays all seven core financial metrics.2. Refreshing/reopening produces the same values from persisted/source data.3. If a required source link is unresolved, the page clearly indicates that the summary may be incomplete rather than fabricating a total.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: opening a linked project immediately displays all seven core financial metrics.
+Demonstrate: refreshing/reopening produces the same values from persisted/source data.
+Demonstrate: if a required source link is unresolved, the page clearly indicates that the summary may be incomplete rather than fabricating a total.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 09
+Ticket 9: Add linked QuickBooks activity to the Project page
+Phase 2 - Project Financial Workspace  |  Dependencies: Ticket 8
+PURPOSE
+ | Give the user transparent access to the source transactions behind the project totals.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 9: Add linked QuickBooks activity to the Project page. Give the user transparent access to the source transactions behind the project totals.REQUIRED IMPLEMENTATION1. Add sections/tabs for Contract Basis, Invoices and Payments.2. Show document number, date, status, amount, open balance where available, and QuickBooks source identifier/link if practical.3. Data is read-only in Alpha unless linking action is specifically required.4. Provide a clear indication of unmatched/ambiguous source records associated with the customer/project context.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Source transactions should remain traceable to their QuickBooks identifiers/document numbers.ACCEPTANCE CRITERIA1. User can reconcile each displayed financial summary amount to the underlying synchronized documents.2. Invoice/payment lists survive refresh and match the last successful sync.3. Unmatched/ambiguous activity is visibly separated from confirmed linked activity.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: user can reconcile each displayed financial summary amount to the underlying synchronized documents.
+Demonstrate: invoice/payment lists survive refresh and match the last successful sync.
+Demonstrate: unmatched/ambiguous activity is visibly separated from confirmed linked activity.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 10
+Ticket 10: Add project persistence, reopen/edit behavior and status lifecycle
+Phase 2 - Project Financial Workspace  |  Dependencies: Tickets 8-9
+PURPOSE
+ | Ensure SPFM can be used as an operational system over time, not as a one-session calculator.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 10: Add project persistence, reopen/edit behavior and status lifecycle. Ensure SPFM can be used as an operational system over time, not as a one-session calculator.REQUIRED IMPLEMENTATION1. Persist project identity, source links, shipment state, decisions, overrides and lifecycle status.2. Allow safe editing of SPFM-owned fields while keeping QuickBooks-owned financial fields read-only.3. Support lifecycle states at minimum: Active/Open, Closed, Archived (plus any technical draft state genuinely needed).4. On reopen, recalculate derived metrics from current source data + persisted SPFM decisions.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Lifecycle status changes must not destroy linked source records or prior decisions.ACCEPTANCE CRITERIA1. Create/open/edit/close/reopen workflow works without data loss.2. QuickBooks-owned values cannot be overwritten by typing into SPFM.3. Changing an SPFM-owned field persists and appears after reload.4. Closed projects remain available until archive rules are satisfied.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: create/open/edit/close/reopen workflow works without data loss.
+Demonstrate: quickBooks-owned values cannot be overwritten by typing into SPFM.
+Demonstrate: changing an SPFM-owned field persists and appears after reload.
+Demonstrate: closed projects remain available until archive rules are satisfied.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 11
+Ticket 11: Implement shipment entry and full-shipment workflow
+Phase 3 - Recognition & Shipments  |  Dependencies: Ticket 10
+PURPOSE
+ | Add the operational fact QuickBooks does not know and use it to drive revenue recognition.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 11: Implement shipment entry and full-shipment workflow. Add the operational fact QuickBooks does not know and use it to drive revenue recognition.REQUIRED IMPLEMENTATION1. Add Shipment section to Project page with ability to record shipment date, status, full/partial indicator and optional reference/note.2. For a simple full shipment with no ambiguity, allow the recognition engine to determine the recognized amount according to the approved project value/period rule.3. Persist shipment history; do not replace prior shipment records when additional shipments occur.4. Changing/correcting a shipment must either be traceable or handled via an explicit correction/override path.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Shipment is the operational trigger for recognition workflow; shipment entry is SPFM-owned operational data, not a QuickBooks financial transaction.ACCEPTANCE CRITERIA1. User can record a full shipment and see it after reopen.2. Full shipment updates Recognized/Deferred values according to the defined recognition rules.3. Pre-shipment receipts remain deferred until the relevant shipment exists.4. Shipment date/effective period is available to later Financial Review.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: user can record a full shipment and see it after reopen.
+Demonstrate: full shipment updates Recognized/Deferred values according to the defined recognition rules.
+Demonstrate: pre-shipment receipts remain deferred until the relevant shipment exists.
+Demonstrate: shipment date/effective period is available to later Financial Review.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 12
+Ticket 12: Implement deferred-versus-recognized revenue engine
+Phase 3 - Recognition & Shipments  |  Dependencies: Ticket 11
+PURPOSE
+ | Make the central SPFM accounting workflow deterministic where possible and explicit where judgment is required.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 12: Implement deferred-versus-recognized revenue engine. Make the central SPFM accounting workflow deterministic where possible and explicit where judgment is required.REQUIRED IMPLEMENTATION1. Calculate deferred and recognized revenue from linked financial activity plus shipment/recognition facts.2. Cash receipt alone must not cause recognition before the relevant shipment trigger.3. For straightforward fully shipped projects, recognition should occur without redundant manual steps where the rule is deterministic.4. If source data or shipment context is insufficient, return a specific unresolved reason that can become a Work Queue item.5. Keep recognition decisions/effective dates traceable.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Cash receipt alone must not cause revenue recognition before the applicable shipment.ACCEPTANCE CRITERIA1. Paid-before-shipment project shows collected cash but zero/appropriate recognized revenue and corresponding deferred amount.2. Recording the applicable shipment moves the appropriate value from deferred to recognized.3. Recognition results remain identical after refresh/reopen.4. Ambiguous situations produce an explicit unresolved state instead of an arbitrary answer.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: paid-before-shipment project shows collected cash but zero/appropriate recognized revenue and corresponding deferred amount.
+Demonstrate: recording the applicable shipment moves the appropriate value from deferred to recognized.
+Demonstrate: recognition results remain identical after refresh/reopen.
+Demonstrate: ambiguous situations produce an explicit unresolved state instead of an arbitrary answer.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 13
+Ticket 13: Build partial-shipment allocation workflow
+Phase 3 - Recognition & Shipments  |  Dependencies: Ticket 12
+PURPOSE
+ | Handle the primary non-trivial case that motivated SPFM: a project ships in stages and only the shipped portion should be recognized.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 13: Build partial-shipment allocation workflow. Handle the primary non-trivial case that motivated SPFM: a project ships in stages and only the shipped portion should be recognized.REQUIRED IMPLEMENTATION1. When a Shipment is marked partial, open a purpose-built allocation interface.2. Allow the user to allocate a value/percentage of project/contract performance to the shipment, subject to validation against remaining allocable value.3. Show previously recognized value, proposed allocation, remaining deferred/unallocated value and resulting financial state before save.4. Persist each shipment allocation separately so multiple partial shipments can accumulate.5. Prevent total allocated/recognized project value from exceeding the approved contract basis unless an explicit override is recorded.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Never silently choose an allocation for a partial shipment when the correct allocation is ambiguous.ACCEPTANCE CRITERIA1. Partial shipment cannot be finalized without a valid allocation unless a deterministic allocation rule has been approved and implemented.2. Saving a partial allocation updates Recognized and Deferred values immediately.3. A second partial shipment recognizes only additional allocated value and preserves the first shipment.4. Invalid over-allocation is blocked with a clear validation message.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: partial shipment cannot be finalized without a valid allocation unless a deterministic allocation rule has been approved and implemented.
+Demonstrate: saving a partial allocation updates Recognized and Deferred values immediately.
+Demonstrate: a second partial shipment recognizes only additional allocated value and preserves the first shipment.
+Demonstrate: invalid over-allocation is blocked with a clear validation message.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 14
+Ticket 14: Add recognition-period/effective-date decision handling
+Phase 3 - Recognition & Shipments  |  Dependencies: Tickets 12-13
+PURPOSE
+ | Support period-close accuracy when shipment and accounting timing require an explicit effective recognition month/date.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 14: Add recognition-period/effective-date decision handling. Support period-close accuracy when shipment and accounting timing require an explicit effective recognition month/date.REQUIRED IMPLEMENTATION1. Persist recognition effective date/accounting period for recognition events/decisions.2. Default to the deterministic shipment date/period where appropriate, but allow an explicit decision path when the rule requires human confirmation.3. Changes to an effective period must be traceable and must not silently rewrite prior history.4. Expose recognition events by period for Financial Review.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Recognition/effective period decisions must be persisted with actor, date, reason/context, and affected amount where applicable.ACCEPTANCE CRITERIA1. Each recognized amount can be associated with an effective accounting period/date.2. Project financial summary can report total recognized while Financial Review can segment recognition by period.3. Changing a period through an approved correction path preserves who/when/why.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: each recognized amount can be associated with an effective accounting period/date.
+Demonstrate: project financial summary can report total recognized while Financial Review can segment recognition by period.
+Demonstrate: changing a period through an approved correction path preserves who/when/why.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 15
+Ticket 15: Build the Work Queue framework and make it the home screen
+Phase 4 - Work Queue & Exceptions  |  Dependencies: Tickets 12-14
+PURPOSE
+ | Create the operational center of SPFM: a short list of real financial decisions or follow-up that require action.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 15: Build the Work Queue framework and make it the home screen. Create the operational center of SPFM: a short list of real financial decisions or follow-up that require action.REQUIRED IMPLEMENTATION1. Home route displays Work Queue, not profitability analytics.2. Derive/generate queue items from unresolved system states rather than requiring users to create generic tasks.3. Each item must include Project, issue type, concise explanation, relevant amount/context, age/date and a single primary action.4. Clicking the primary action opens the specific resolution workflow for that issue, not a generic project drawer.5. Queue item disappears only when the underlying issue is resolved.6. Implement basic ownership/snooze only if required to operate the Alpha; otherwise defer.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. The Work Queue is the home screen and must contain only actionable financial items, not a generic task list.ACCEPTANCE CRITERIA1. At least the issue types from Tickets 16-18 can appear automatically in the queue.2. Resolving the underlying issue removes the item after refresh.3. Merely opening/viewing an item does not mark it resolved.4. Home screen contains no gross-margin dashboard dependency.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: at least the issue types from Tickets 16-18 can appear automatically in the queue.
+Demonstrate: resolving the underlying issue removes the item after refresh.
+Demonstrate: merely opening/viewing an item does not mark it resolved.
+Demonstrate: home screen contains no gross-margin dashboard dependency.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 16
+Ticket 16: Add unmatched/ambiguous QuickBooks record resolution
+Phase 4 - Work Queue & Exceptions  |  Dependencies: Ticket 15
+PURPOSE
+ | Prevent SPFM from silently assigning uncertain accounting activity to the wrong project.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 16: Add unmatched/ambiguous QuickBooks record resolution. Prevent SPFM from silently assigning uncertain accounting activity to the wrong project.REQUIRED IMPLEMENTATION1. Generate a Work Queue item when a synchronized invoice/payment/contract-basis record cannot be confidently linked to a project.2. Provide a specific resolution screen to link the record to an existing project, create/link a new project where appropriate, or explicitly mark it non-project/ignored with reason.3. Persist the resolution and remove the ambiguity from future syncs unless the source record materially changes.4. Make manual unlink/reassignment traceable.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Resolution must be traceable and reversible through an explicit correction/override path, not database edits.ACCEPTANCE CRITERIA1. A deliberately ambiguous test record appears in Work Queue.2. User can resolve it to the correct project and the project financial summary updates.3. The item does not reappear on the next sync unless the source relationship changes.4. No record is auto-assigned when confidence/rules are insufficient.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: a deliberately ambiguous test record appears in Work Queue.
+Demonstrate: user can resolve it to the correct project and the project financial summary updates.
+Demonstrate: the item does not reappear on the next sync unless the source relationship changes.
+Demonstrate: no record is auto-assigned when confidence/rules are insufficient.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 17
+Ticket 17: Add Accounts Receivable and collections attention workflow
+Phase 4 - Work Queue & Exceptions  |  Dependencies: Tickets 5, 15
+PURPOSE
+ | Keep unpaid balances visible in project context and surface collection attention without turning SPFM into a CRM.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 17: Add Accounts Receivable and collections attention workflow. Keep unpaid balances visible in project context and surface collection attention without turning SPFM into a CRM.REQUIRED IMPLEMENTATION1. Calculate/display open A/R from linked invoices/payments.2. Identify overdue/unpaid invoices using available due-date/status data.3. Generate a Work Queue item when the approved collections condition is met.4. Resolution workflow should allow review of source invoice/payment context and record an SPFM follow-up status/note only if needed; do not duplicate QuickBooks receivable balances.5. Unpaid balances must prevent auto-archive.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. A/R is project-context financial follow-up; do not turn this into a CRM or email automation system in Alpha.ACCEPTANCE CRITERIA1. Project with an unpaid invoice shows accurate A/R and overdue state.2. Qualifying overdue balance appears in Work Queue.3. Receipt of payment in QuickBooks clears/reduces the A/R after sync.4. Project cannot auto-archive while A/R remains greater than zero.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: project with an unpaid invoice shows accurate A/R and overdue state.
+Demonstrate: qualifying overdue balance appears in Work Queue.
+Demonstrate: receipt of payment in QuickBooks clears/reduces the A/R after sync.
+Demonstrate: project cannot auto-archive while A/R remains greater than zero.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 18
+Ticket 18: Implement explicit overrides and correction audit trail
+Phase 4 - Work Queue & Exceptions  |  Dependencies: Tickets 12-17
+PURPOSE
+ | Allow exceptional financial situations to be resolved without corrupting source-of-truth data or hiding judgment.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 18: Implement explicit overrides and correction audit trail. Allow exceptional financial situations to be resolved without corrupting source-of-truth data or hiding judgment.REQUIRED IMPLEMENTATION1. Create a controlled override/correction action for approved SPFM-derived decisions (for example recognition allocation/effective period), not for editing QuickBooks documents.2. Require reason/context and record actor/timestamp, prior value and new value where applicable.3. Display active overrides/corrections on the Project page.4. Ensure calculations consume the approved override consistently.5. Do not implement a broad admin-edit-anything interface.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Overrides must be exceptional, explicit, attributable, and auditable. Never use overrides to hide broken base logic.ACCEPTANCE CRITERIA1. User cannot silently overwrite a derived financial value.2. Approved override changes the resulting calculation and persists.3. Project page shows that an override exists and why.4. Original source transaction remains unchanged.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: user cannot silently overwrite a derived financial value.
+Demonstrate: approved override changes the resulting calculation and persists.
+Demonstrate: project page shows that an override exists and why.
+Demonstrate: original source transaction remains unchanged.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 19
+Ticket 19: Build Accounting Period / Financial Review workspace
+Phase 5 - Review, Reporting & Archive  |  Dependencies: Tickets 14-18
+PURPOSE
+ | Provide a controlled process for confirming period readiness before accounting close.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 19: Build Accounting Period / Financial Review workspace. Provide a controlled process for confirming period readiness before accounting close.REQUIRED IMPLEMENTATION1. Create a Financial Review workspace organized by accounting period/month.2. Show recognition events, deferred balances and unresolved issues that affect the selected period.3. Block or clearly flag period completion when material unresolved queue items/decisions affect that period.4. Allow a period review status (Open/In Review/Complete or similarly minimal states) with reviewer/timestamp.5. Aggregate from project-level source/decision data rather than maintaining a separate manual ledger.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Financial Review must surface unresolved exceptions before close; aggregate totals must not conceal unresolved items.ACCEPTANCE CRITERIA1. User can select a period and see the projects/recognition activity relevant to it.2. An unresolved recognition/partial-shipment issue affecting the period is visible and prevents a false clean-close state.3. Completing review is persisted with reviewer and timestamp.4. Project changes that materially affect an already-reviewed open period are reflected or flagged.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: user can select a period and see the projects/recognition activity relevant to it.
+Demonstrate: an unresolved recognition/partial-shipment issue affecting the period is visible and prevents a false clean-close state.
+Demonstrate: completing review is persisted with reviewer and timestamp.
+Demonstrate: project changes that materially affect an already-reviewed open period are reflected or flagged.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 20
+Ticket 20: Generate accountant-ready period reporting/export
+Phase 5 - Review, Reporting & Archive  |  Dependencies: Ticket 19
+PURPOSE
+ | Give Shield/accounting staff a concise output of the financial decisions SPFM is managing.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 20: Generate accountant-ready period reporting/export. Give Shield/accounting staff a concise output of the financial decisions SPFM is managing.REQUIRED IMPLEMENTATION1. Provide an export/report for a selected period summarizing recognized revenue events, deferred revenue balances, relevant project identifiers and explicit adjustments/overrides.2. Include enough source-document references to reconcile back to QuickBooks.3. CSV and/or PDF/XLSX format is acceptable for Alpha/V1 depending on implementation cost; choose the simplest reliable format after approval.4. Report must be reproducible from persisted source data and decisions.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Exports should be accountant-readable and reconcile to the same service-layer calculations used in the app.ACCEPTANCE CRITERIA1. User can generate a report for a selected period.2. Report totals reconcile to the Financial Review workspace.3. Each material line can be traced to a project and source/recognition context.4. Re-running the report without data changes produces the same totals.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: user can generate a report for a selected period.
+Demonstrate: report totals reconcile to the Financial Review workspace.
+Demonstrate: each material line can be traced to a project and source/recognition context.
+Demonstrate: re-running the report without data changes produces the same totals.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 21
+Ticket 21: Implement historical project migration/linking workflow
+Phase 5 - Review, Reporting & Archive  |  Dependencies: Tickets 6, 12-19
+PURPOSE
+ | Allow SPFM to become useful immediately without requiring all projects to originate after go-live.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 21: Implement historical project migration/linking workflow. Allow SPFM to become useful immediately without requiring all projects to originate after go-live.REQUIRED IMPLEMENTATION1. Provide a pragmatic way to create/link projects from older synchronized QuickBooks records.2. Allow entry of missing historical shipment/recognition context where QuickBooks cannot supply it.3. Flag incomplete historical states rather than forcing fabricated precision.4. Provide a simple migration status so partially migrated projects can be distinguished from current fully managed projects.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Historical migration must allow incomplete legacy context to be resolved pragmatically without fabricating missing facts.ACCEPTANCE CRITERIA1. At least one historical Shield project can be linked from older QuickBooks records.2. User can record necessary historical shipment/recognition facts and reach a coherent financial state.3. Incomplete migration remains visibly flagged until resolved.4. Historical records use the same financial calculation service as current projects.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: at least one historical Shield project can be linked from older QuickBooks records.
+Demonstrate: user can record necessary historical shipment/recognition facts and reach a coherent financial state.
+Demonstrate: incomplete migration remains visibly flagged until resolved.
+Demonstrate: historical records use the same financial calculation service as current projects.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 22
+Ticket 22: Implement project close and 7-day auto-archive eligibility
+Phase 5 - Review, Reporting & Archive  |  Dependencies: Tickets 10, 17-19
+PURPOSE
+ | Keep active financial work visible while automatically clearing truly complete projects from day-to-day attention.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 22: Implement project close and 7-day auto-archive eligibility. Keep active financial work visible while automatically clearing truly complete projects from day-to-day attention.REQUIRED IMPLEMENTATION1. A project becomes archive-eligible only when it is Closed, fully paid (A/R = 0), fully recognized (no deferred/unrecognized balance under the approved rules), and has no unresolved material decisions.2. Apply a 7-day delay after the project first satisfies all eligibility conditions.3. If the project becomes ineligible during the delay, reset/cancel archive eligibility.4. Archived projects remain searchable and can be viewed; restore/unarchive can be deferred unless operationally necessary.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Archive eligibility requires closed + fully paid + fully recognized + seven-day waiting period. Archive should not erase historical visibility.ACCEPTANCE CRITERIA1. Closed + paid + fully recognized project does not archive immediately.2. After 7 days of continuous eligibility it becomes Archived automatically or through a scheduled internal job.3. Any unpaid balance or unresolved recognition issue prevents archival.4. Archived project remains accessible by search/history.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: closed + paid + fully recognized project does not archive immediately.
+Demonstrate: after 7 days of continuous eligibility it becomes Archived automatically or through a scheduled internal job.
+Demonstrate: any unpaid balance or unresolved recognition issue prevents archival.
+Demonstrate: archived project remains accessible by search/history.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 23
+Ticket 23: Run real-project end-to-end validation against Shield data
+Phase 6 - Alpha Validation  |  Dependencies: Tickets 4-22
+PURPOSE
+ | Prove the application solves the actual SPFM workflow before expanding scope or polishing secondary features.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 23: Run real-project end-to-end validation against Shield data. Prove the application solves the actual SPFM workflow before expanding scope or polishing secondary features.REQUIRED IMPLEMENTATION1. Select at least 2-3 real or sanitized representative Shield projects covering: paid-before-shipment, fully shipped/recognized, partial shipment, and unpaid A/R where possible.2. Run QuickBooks sync, project linking, shipment entry, recognition, Work Queue resolution, reopen/edit and Financial Review.3. Compare core metrics to source QuickBooks records and the expected accounting treatment.4. Log defects as blocking/non-blocking and fix all blocking financial correctness issues before Alpha release.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Use real Shield projects and compare to QuickBooks/source evidence; document every discrepancy and resolve it before Alpha sign-off.ACCEPTANCE CRITERIA1. Every required Alpha flow works on representative real data without manual re-keying of QuickBooks amounts.2. Core financial metrics reconcile to the test evidence.3. Partial shipment and pre-shipment-cash scenarios behave as designed.4. No blocker remains that could cause materially wrong recognition or A/R presentation.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: every required Alpha flow works on representative real data without manual re-keying of QuickBooks amounts.
+Demonstrate: core financial metrics reconcile to the test evidence.
+Demonstrate: partial shipment and pre-shipment-cash scenarios behave as designed.
+Demonstrate: no blocker remains that could cause materially wrong recognition or A/R presentation.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Prompt 24
+Ticket 24: Deploy the usable internal Alpha and freeze nonessential scope
+Phase 6 - Alpha Validation  |  Dependencies: Ticket 23
+PURPOSE
+ | Put the real end-to-end financial workflow into Shield’s hands quickly and prevent feature creep before operational feedback.
+ |
+Copy/paste coding prompt
+You are implementing SPFM for Shield Security Doors. The attached 'SPFM Design & Product Requirements - Source of Truth' and 'SPFM Developer Backlog & Build Order - Source of Truth' are the controlling product specifications. The current prototype contains useful UI/authentication work but was incorrectly centered on manual job costing. SPFM is a project-based financial operations layer over QuickBooks, focused on invoices, payments, A/R, shipment state, deferred versus recognized revenue, exceptions, and period review.Preserve the established Next.js/React frontend, ASP.NET Core API, Microsoft Entra/MSAL authentication direction, and reusable components unless this ticket requires a change. Do not invent business rules. If an ambiguity would affect product behavior, stop and ask before implementing it.TASKTicket 24: Deploy the usable internal Alpha and freeze nonessential scope. Put the real end-to-end financial workflow into Shield’s hands quickly and prevent feature creep before operational feedback.REQUIRED IMPLEMENTATION1. Deploy the validated build to the agreed internal environment with production-like database persistence and secure configuration.2. Provide minimal operational logging for auth, sync and calculation/workflow errors.3. Create a short release note listing implemented workflows and known limitations.4. Defer advanced dashboards, granular permissions, mobile polish, broad analytics, generic CRM/project management, full document management and extensive admin tooling until real Alpha usage justifies them.IMPLEMENTATION CONSTRAINTS / CLARIFICATIONS1. Freeze nonessential feature work. The goal is a usable internal Alpha, not a broadly polished SaaS product.ACCEPTANCE CRITERIA1. Shield can sign in and execute the approved Alpha workflow in the deployed environment.2. Data persists across deployments according to the hosting/database setup.3. QuickBooks connection/sync errors are diagnosable.4. The release is explicitly labeled Alpha with a known-limitations list and no unresolved core financial correctness blocker.DELIVERY REQUIREMENTSWhen complete, deploy this ticket to the test environment and provide: (1) a concise implementation summary, (2) changed files/components, (3) database/API changes, (4) migrations or setup steps, (5) tests run and results, (6) the test URL, and (7) any known limitation or unresolved question. Do not begin the next ticket until the checkpoint below has been demonstrated and approved.
+ |
+Checkpoint demo required before next ticket
+Demonstrate: shield can sign in and execute the approved Alpha workflow in the deployed environment.
+Demonstrate: data persists across deployments according to the hosting/database setup.
+Demonstrate: quickBooks connection/sync errors are diagnosable.
+Demonstrate: the release is explicitly labeled Alpha with a known-limitations list and no unresolved core financial correctness blocker.
+Show the deployed build and the relevant persisted data/API state; a code walkthrough alone is not sufficient.
+Wait for explicit approval before starting the next numbered prompt.
+Alpha completion gate
+Prompt 24 is complete only when the end-to-end SPFM workflow has been demonstrated with real or representative Shield data and the core Product Requirements acceptance criteria pass. The Alpha should then be frozen for real internal use before additional scope is added.
+QuickBooks customer/contract basis, invoices and payments synchronize without duplicate re-keying.
+Those records are grouped into a persistent SPFM Project.
+Contract value, invoiced, collected, A/R, deferred and recognized revenue reconcile to the implemented rules.
+Shipment and partial-shipment workflows drive recognition decisions correctly.
+Ambiguities surface in the Work Queue and disappear only after the underlying issue is resolved.
+Financial Review surfaces unresolved period issues and produces accountant-ready output.
+Closed, fully paid and fully recognized projects become archive-eligible after seven days.
+The internal deployed build can be used repeatedly without losing project/source/decision state.
