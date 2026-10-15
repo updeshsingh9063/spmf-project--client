@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -71,7 +73,14 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 if (!string.IsNullOrWhiteSpace(connectionString))
     healthChecks.AddNpgSql(connectionString, name: "database", tags: ["ready"]);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Enums travel as strings ("quote", not 0). Numeric enums are unreadable in
+        // logs and silently change meaning if a value is ever inserted into the enum.
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
