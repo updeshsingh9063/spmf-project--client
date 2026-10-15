@@ -24,3 +24,5 @@ appsettings.Local.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated PDFs are rebuilt from their Markdown source
