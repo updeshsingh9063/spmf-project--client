@@ -1,0 +1,26 @@
+# .NET
+**/bin/
+**/obj/
+*.user
+.vs/
+
+# Node / Next.js
+**/node_modules/
+**/.next/
+**/out/
+
+# Environment — never commit real values (requirements s31)
+.env
+.env.local
+.env.*.local
+appsettings.Local.json
+
+# Tests & tooling
+**/TestResults/
+**/playwright-report/
+**/test-results/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

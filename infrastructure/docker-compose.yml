@@ -1,0 +1,28 @@
+# Local development dependencies.
+#
+#   docker compose -f infrastructure/docker-compose.yml up -d
+#
+# The application itself runs from the IDE or `dotnet run` / `npm run dev` so that
+# rebuilds are instant. Only the database is containerised.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: spfm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spfm
+      POSTGRES_PASSWORD: spfm123   # local only; production uses a managed secret
+      POSTGRES_DB: spfm
+    ports:
+      - "5432:5432"
+    volumes:
+      - spfm_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spfm -d spfm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  spfm_postgres_data:
