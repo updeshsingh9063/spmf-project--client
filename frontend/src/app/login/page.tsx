@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Spinner } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 
 function MicrosoftMark() {
@@ -18,10 +19,22 @@ function MicrosoftMark() {
 export default function LoginPage() {
   const { user, ready, error, mode, signIn } = useAuth();
   const router = useRouter();
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     if (ready && user) router.replace("/");
   }, [ready, user, router]);
+
+  // While MSAL is completing a redirect there is no user yet and no error: the
+  // screen must say what is happening rather than look like a failed sign-in
+  // (requirements s23, s45).
+  const returningFromMicrosoft =
+    mode === "entra" && !ready && typeof window !== "undefined" && window.location.hash.includes("code=");
+
+  const start = () => {
+    setRedirecting(true);
+    signIn();
+  };
 
   return (
     <div className="grid min-h-screen md:grid-cols-[1.1fr_1fr]">
@@ -53,19 +66,36 @@ export default function LoginPage() {
           <h2 className="display mt-6 text-2xl md:mt-0">Sign in</h2>
           <p className="mt-2 text-sm text-ink-2">Use your Shield Microsoft work account.</p>
 
-          <button
-            onClick={signIn}
-            disabled={!ready || (mode === "entra" && !!error)}
-            className="btn btn-quiet mt-8 h-11 w-full gap-3 text-[0.95rem]"
-          >
-            <MicrosoftMark />
-            Sign in with Microsoft
-          </button>
+          {returningFromMicrosoft || (ready && user) ? (
+            <p className="mt-8 flex items-center gap-2 text-sm text-ink-2">
+              <Spinner /> Completing sign-in…
+            </p>
+          ) : (
+            <button
+              onClick={start}
+              disabled={!ready || redirecting || (mode === "entra" && !!error)}
+              className="btn btn-quiet mt-8 h-11 w-full gap-3 text-[0.95rem]"
+            >
+              {redirecting ? <Spinner /> : <MicrosoftMark />}
+              {redirecting ? "Signing in…" : "Sign in with Microsoft"}
+            </button>
+          )}
 
           {error && (
-            <p role="alert" className="mt-6 rounded-md border border-bad/30 bg-bad-wash p-3 text-xs leading-relaxed text-bad">
-              {error}
-            </p>
+            <div role="alert" className="mt-6 rounded-md border border-bad/30 bg-bad-wash p-4 text-sm text-bad">
+              <p className="font-medium">We couldn&apos;t sign you in</p>
+              <p className="mt-1 text-xs leading-relaxed">{error}</p>
+              <ul className="mt-3 list-disc space-y-1 pl-4 text-xs leading-relaxed">
+                <li>Check you are using your Shield Microsoft work account, not a personal one.</li>
+                <li>If this keeps happening, the app may need this address added to its Microsoft sign-in settings.</li>
+              </ul>
+              <button
+                onClick={() => window.location.assign("/login")}
+                className="btn btn-quiet mt-3 h-8 px-3 text-xs"
+              >
+                Try again
+              </button>
+            </div>
           )}
           {mode === "preview" && (
             <p className="mt-6 rounded-md border border-line bg-panel p-3 text-xs leading-relaxed text-muted">

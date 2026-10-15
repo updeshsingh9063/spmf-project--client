@@ -65,7 +65,17 @@ export function Toast({ message, onDone }: { message: string | null; onDone: () 
   );
 }
 
-export function Icon({ name, size = 16 }: { name: "grid" | "folder" | "plus" | "search" | "out" | "calc" | "save" | "trash" | "back"; size?: number }) {
+/** Inline busy indicator for buttons and inline loading text (requirements s23). */
+export function Spinner({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" className="spin" aria-hidden="true">
+      <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.25" />
+      <path d="M8 2a6 6 0 0 1 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function Icon({ name, size = 16 }: { name: "grid" | "folder" | "plus" | "search" | "out" | "calc" | "save" | "trash" | "back" | "user"; size?: number }) {
   const p = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   const paths: Record<string, React.ReactNode> = {
     grid: (<><rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1" {...p} /><rect x="9" y="2.5" width="4.5" height="4.5" rx="1" {...p} /><rect x="2.5" y="9" width="4.5" height="4.5" rx="1" {...p} /><rect x="9" y="9" width="4.5" height="4.5" rx="1" {...p} /></>),
@@ -77,6 +87,7 @@ export function Icon({ name, size = 16 }: { name: "grid" | "folder" | "plus" | "
     save: <path d="M3 3.5c0-.3.2-.5.5-.5h7.3L13 5.2v7.3c0 .3-.2.5-.5.5h-9c-.3 0-.5-.2-.5-.5zM5.5 3v3h4.5V3M5 13V9.5h6V13" {...p} />,
     trash: <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" {...p} />,
     back: <path d="M9.5 3.5 5 8l4.5 4.5" {...p} />,
+    user: (<><circle cx="8" cy="5.5" r="2.75" {...p} /><path d="M2.75 13.5c0-2.4 2.35-4 5.25-4s5.25 1.6 5.25 4" {...p} /></>),
   };
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true">

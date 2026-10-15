@@ -5,6 +5,10 @@ import { expect, test } from "@playwright/test";
 // reopen → edit → recalculate → save, with change history recorded.
 
 test("full Alpha loop", async ({ page }) => {
+  // The unsaved-changes guard uses window.confirm. Accept it by default so the
+  // loop runs; the guard itself is asserted in its own test below.
+  page.on("dialog", (d) => d.accept());
+
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
   await page.getByRole("button", { name: "Sign in with Microsoft" }).click();
@@ -38,7 +42,7 @@ test("full Alpha loop", async ({ page }) => {
 
   // Find it from the list with search, and reopen it
   await page.goto("/projects");
-  await page.getByPlaceholder("Search by name, client or number").fill("strongroom");
+  await page.getByPlaceholder("Search by name, customer or number").fill("strongroom");
   await expect(page.locator("tbody tr")).toHaveCount(1);
   await page.getByRole("link", { name: "E2E strongroom door" }).click();
   await expect(page).toHaveURL(url);
@@ -70,4 +74,52 @@ test("sign out returns to the sign-in screen", async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/projects");
   await expect(page).toHaveURL(/\/login$/);
+});
+
+
+test("warns before leaving a project with unsaved changes", async ({ page }) => {
+  // Requirements s24. Losing an edited project to a stray sidebar click is the
+  // failure this exists to prevent.
+  page.on("dialog", (d) => d.accept());
+  await page.goto("/login");
+  await page.getByRole("button", { name: "Sign in with Microsoft" }).click();
+  await page.getByRole("link", { name: "Projects" }).click();
+  await page.locator("tbody tr").first().getByRole("link").click();
+  await expect(page.locator("#name")).toBeVisible();
+
+  await page.fill("#labourHours", "99");
+  await expect(page.getByText("Unsaved changes")).toBeVisible();
+
+  // Dismissing the prompt must keep us on the project with the edit intact.
+  page.removeAllListeners("dialog");
+  page.on("dialog", (d) => d.dismiss());
+
+  const url = page.url();
+  await page.getByRole("link", { name: "Projects" }).click();
+  await page.waitForTimeout(300);
+
+  expect(page.url()).toBe(url);
+  await expect(page.locator("#labourHours")).toHaveValue("99");
+});
+
+test("the account screen shows who is signed in", async ({ page }) => {
+  // Requirements s45 lists a user/profile screen.
+  await page.goto("/login");
+  await page.getByRole("button", { name: "Sign in with Microsoft" }).click();
+  await page.getByRole("link", { name: "Your account" }).click();
+
+  await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
+  await expect(page.getByText("Preview (simulated sign-in)")).toBeVisible();
+});
+
+test("projects can be sorted", async ({ page }) => {
+  // Requirements s27 lists sorting, alphabetical and project number.
+  await page.goto("/login");
+  await page.getByRole("button", { name: "Sign in with Microsoft" }).click();
+  await page.getByRole("link", { name: "Projects" }).click();
+
+  await page.getByLabel("Sort by").selectOption("name");
+  const names = await page.locator("tbody tr td:nth-child(2) a").allInnerTexts();
+
+  expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
 });

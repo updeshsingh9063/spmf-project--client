@@ -4,16 +4,29 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CostBar } from "@/components/CostBar";
-import { CalcBadge, Icon, Toast } from "@/components/ui";
+import { CalcBadge, Icon, Spinner, Toast } from "@/components/ui";
+import { ApiError, ValidationError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { config } from "@/lib/config";
 import { fmtDate, fmtDateTime, fmtMoney, fmtMoneyCents, fmtPct } from "@/lib/format";
-import { createProject, emptyInputs, updateProject, type ProjectDraft } from "@/lib/projectStore";
-import { calcState, calculate, fingerprint, validate, type FieldErrors } from "@/lib/spfm";
-import type { HistoryEntry, Project, ProjectInputs, ProductLine, SpfmResults } from "@/lib/types";
+import {
+  calculateProject,
+  createProject,
+  emptyInputs,
+  getHistory,
+  toFormField,
+  updateProject,
+  type ProjectDraft,
+} from "@/lib/projectStore";
+import { calcState, validate, type FieldErrors } from "@/lib/spfm";
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
+import type { CalculationState, HistoryEntry, Project, ProjectInputs, ProductLine, SpfmResults } from "@/lib/types";
+import { STATUS_LABEL } from "@/lib/types";
 
 const blankDraft = (): ProjectDraft => ({
   name: "",
   client: "",
+  customerId: null,
   siteAddress: "",
   status: "quote",
   inputs: emptyInputs(),
@@ -25,6 +38,7 @@ const blankDraft = (): ProjectDraft => ({
 const toDraft = (p: Project): ProjectDraft => ({
   name: p.name,
   client: p.client,
+  customerId: p.customerId ?? null,
   siteAddress: p.siteAddress,
   status: p.status,
   inputs: p.inputs,
@@ -109,30 +123,40 @@ function Results({ r, overheadPct }: { r: SpfmResults; overheadPct: number }) {
   );
 }
 
-function History({ entries }: { entries: HistoryEntry[] }) {
-  const [all, setAll] = useState(false);
-  const shown = all ? entries : entries.slice(0, 5);
+function History({
+  entries, loading, hasMore, onMore,
+}: {
+  entries: HistoryEntry[]; loading: boolean; hasMore: boolean; onMore: () => void;
+}) {
   return (
     <section className="panel p-5" aria-labelledby="history-h">
       <h2 id="history-h" className="text-[0.95rem] font-semibold">Change history</h2>
       <p className="mt-0.5 text-xs text-muted">Who changed what, and when. Recorded each time the project is saved.</p>
-      {entries.length === 0 ? (
+
+      {loading && entries.length === 0 ? (
+        <p className="mt-4 flex items-center gap-2 text-sm text-muted"><Spinner /> Loading history…</p>
+      ) : entries.length === 0 ? (
         <p className="mt-4 text-sm text-ink-2">No changes yet. History starts when the project is first saved.</p>
       ) : (
         <ol className="mt-4 space-y-4 border-l border-line pl-4">
-          {shown.map((h) => (
+          {entries.map((h) => (
             <li key={h.id} className="relative">
               <span className="absolute top-1.5 -left-[21px] h-2 w-2 rounded-full bg-steel ring-2 ring-white" aria-hidden="true" />
               <p className="text-sm">
                 <span className="font-medium">{h.by}</span>{" "}
-                <span className="text-ink-2">{h.action === "created" ? "created the project" : `made ${h.changes.length} ${h.changes.length === 1 ? "change" : "changes"}`}</span>
+                <span className="text-ink-2">
+                  {h.action === "created"
+                    ? "created the project"
+                    : `made ${h.changes.length} ${h.changes.length === 1 ? "change" : "changes"}`}
+                </span>
               </p>
               <p className="text-xs text-muted">{fmtDateTime(h.at)}</p>
               {h.changes.length > 0 && (
                 <ul className="mt-1.5 space-y-0.5 text-xs text-ink-2">
                   {h.changes.map((c, i) => (
                     <li key={i}>
-                      <span className="text-ink">{c.field}:</span> {c.from} <span aria-label="changed to">→</span> {c.to}
+                      <span className="text-ink">{c.field}:</span> {c.from || "blank"}{" "}
+                      <span aria-label="changed to">→</span> {c.to || "blank"}
                     </li>
                   ))}
                 </ul>
@@ -141,9 +165,10 @@ function History({ entries }: { entries: HistoryEntry[] }) {
           ))}
         </ol>
       )}
-      {entries.length > 5 && (
-        <button onClick={() => setAll(!all)} className="mt-4 text-sm font-medium text-brass-deep hover:underline">
-          {all ? "Show recent only" : `Show all ${entries.length} entries`}
+
+      {hasMore && (
+        <button onClick={onMore} disabled={loading} className="mt-4 text-sm font-medium text-brass-deep hover:underline">
+          {loading ? "Loading…" : "Show earlier changes"}
         </button>
       )}
     </section>
@@ -154,13 +179,48 @@ export function ProjectEditor({ project }: { project: Project | null }) {
   const router = useRouter();
   const { user } = useAuth();
   const by = user?.name ?? "Unknown user";
-  const [history, setHistory] = useState<HistoryEntry[]>(project?.history ?? []);
+
   const [draft, setDraft] = useState<ProjectDraft>(() => (project ? toDraft(project) : blankDraft()));
   const [saved, setSaved] = useState<string>(() => JSON.stringify(project ? toDraft(project) : blankDraft()));
+  const [etag, setEtag] = useState<string | null>(project?.etag ?? null);
+  const [serverState, setServerState] = useState<CalculationState | undefined>(project?.calculationState);
+  const [engineVersion, setEngineVersion] = useState<string | null>(project?.engineVersion ?? null);
+
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyCursor, setHistoryCursor] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   const [showErrors, setShowErrors] = useState(false);
+  const [serverErrors, setServerErrors] = useState<FieldErrors>({});
   const [toast, setToast] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [calculating, setCalculating] = useState(false);
+  const [conflict, setConflict] = useState(false);
+
   const clearToast = useCallback(() => setToast(null), []);
+
+  // History is a separate, paged resource: it grows without bound, so it is never
+  // bundled into the project payload.
+  const loadHistory = useCallback(
+    async (cursor?: string) => {
+      if (!project) return;
+      setHistoryLoading(true);
+      try {
+        const page = await getHistory(project.id, cursor);
+        setHistory((prev) => (cursor ? [...prev, ...page.entries] : page.entries));
+        setHistoryCursor(page.nextCursor);
+      } catch {
+        // History is supporting detail: failing to load it must not block editing.
+      } finally {
+        setHistoryLoading(false);
+      }
+    },
+    [project],
+  );
+
+  useEffect(() => {
+    void loadHistory();
+  }, [loadHistory]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -170,38 +230,88 @@ export function ProjectEditor({ project }: { project: Project | null }) {
     }
   }, []);
 
-  const errors: FieldErrors = useMemo(() => (showErrors ? validate(draft, draft.inputs) : {}), [showErrors, draft]);
+  const localErrors: FieldErrors = useMemo(
+    () => (showErrors ? validate(draft, draft.inputs) : {}),
+    [showErrors, draft],
+  );
+  // Server messages win: they reflect the rules that actually govern the save.
+  const errors: FieldErrors = useMemo(() => ({ ...localErrors, ...serverErrors }), [localErrors, serverErrors]);
+
   const dirty = JSON.stringify(draft) !== saved;
-  const state = calcState(draft);
+  const state = calcState({ ...draft, calculationState: serverState });
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  useUnsavedChanges(dirty, "This project has unsaved changes. Leave without saving?");
 
-  const setInputs = (patch: Partial<ProjectInputs>) => setDraft((d) => ({ ...d, inputs: { ...d.inputs, ...patch } }));
+  const patchDraft = (patch: Partial<ProjectDraft>) => {
+    setDraft((d) => ({ ...d, ...patch }));
+    setServerErrors({});
+  };
+  const setInputs = (patch: Partial<ProjectInputs>) => {
+    setDraft((d) => ({ ...d, inputs: { ...d.inputs, ...patch } }));
+    setServerErrors({});
+    // Editing inputs invalidates saved figures. The server confirms this on the next
+    // load; marking it immediately stops stale numbers reading as current.
+    setServerState((s) => (s === "current" ? "outdated" : s));
+  };
   const setLine = (i: number, patch: Partial<ProductLine>) =>
     setInputs({ products: draft.inputs.products.map((l, j) => (j === i ? { ...l, ...patch } : l)) });
   const addLine = () =>
     setInputs({ products: [...draft.inputs.products, { id: crypto.randomUUID(), description: "", qty: 1, unitCost: 0, unitPrice: 0 }] });
   const removeLine = (i: number) => setInputs({ products: draft.inputs.products.filter((_, j) => j !== i) });
 
-  const runCalculate = () => {
+  /** Turns a server validation failure into messages attached to the right inputs. */
+  const applyServerValidation = (err: ValidationError) => {
+    const mapped: FieldErrors = {};
+    for (const [field, message] of Object.entries(err.toFieldErrors())) {
+      mapped[toFormField(field)] = message;
+    }
+    setServerErrors(mapped);
+    setShowErrors(true);
+    setToast("Some details need fixing before this can be saved.");
+  };
+
+  const describeError = (err: unknown): string => {
+    if (err instanceof ValidationError) return "Some details need fixing.";
+    if (err instanceof ApiError) return err.message;
+    return err instanceof Error ? err.message : "Something went wrong. Please try again.";
+  };
+
+  const runCalculate = async () => {
     const e = validate(draft, draft.inputs);
     setShowErrors(true);
     if (Object.keys(e).length) {
       setToast(`Fix ${Object.keys(e).length} ${Object.keys(e).length === 1 ? "field" : "fields"} before calculating`);
       return;
     }
-    setDraft((d) => ({
-      ...d,
-      results: calculate(d.inputs),
-      calculatedFor: fingerprint(d.inputs),
-      calculatedAt: new Date().toISOString(),
-    }));
-    setToast("Calculated");
+
+    // In API mode the figures of record are computed server-side in decimal, which
+    // means an unsaved project must be saved first — results belong to a project
+    // someone can reopen.
+    if (config.dataMode === "api" && (!project || dirty)) {
+      setToast("Save the project first, then calculate.");
+      return;
+    }
+
+    setCalculating(true);
+    try {
+      const { results, state: newState, engineVersion: version } = await calculateProject(project?.id ?? "", draft);
+      setDraft((d) => ({ ...d, results, calculatedAt: new Date().toISOString() }));
+      setServerState(newState);
+      setEngineVersion(version);
+      setSaved((s) => {
+        // Calculating does not change the inputs, so it must not make the form dirty.
+        const parsed = JSON.parse(s) as ProjectDraft;
+        return JSON.stringify({ ...parsed, results, calculatedAt: new Date().toISOString() });
+      });
+      setDraft((d) => ({ ...d }));
+      setToast("Calculated");
+      void loadHistory();
+    } catch (err) {
+      if (err instanceof ValidationError) applyServerValidation(err);
+      else setToast(describeError(err));
+    } finally {
+      setCalculating(false);
+    }
   };
 
   const save = async () => {
@@ -211,22 +321,48 @@ export function ProjectEditor({ project }: { project: Project | null }) {
       setToast(`Fix ${Object.keys(e).length} ${Object.keys(e).length === 1 ? "field" : "fields"} before saving`);
       return;
     }
+
     setSaving(true);
+    setConflict(false);
     try {
       if (project) {
-        const p = await updateProject(project.id, draft, by);
-        setHistory(p.history);
+        // The ETag carries the version loaded into this browser. Without it the API
+        // refuses the save rather than letting one person's edit erase another's.
+        const p = await updateProject(project.id, draft, by, etag);
+        setEtag(p.etag ?? null);
+        setServerState(p.calculationState);
         setSaved(JSON.stringify(toDraft(p)));
+        setDraft(toDraft(p));
         setToast(state === "current" ? "Project saved" : "Project saved. Results still need calculating");
+        void loadHistory();
       } else {
         const p = await createProject(draft, by);
         setSaved(JSON.stringify(draft));
         router.replace(`/projects/${p.id}?created=1`);
       }
     } catch (err) {
-      setToast(err instanceof Error ? err.message : "Couldn't save the project. Try again.");
+      if (err instanceof ValidationError) {
+        applyServerValidation(err);
+      } else if (err instanceof ApiError && err.status === 409) {
+        setConflict(true);
+        setToast("Someone else changed this project.");
+      } else {
+        setToast(describeError(err));
+      }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const cancel = () => {
+    if (dirty && !window.confirm("Discard the changes you've made to this project?")) return;
+    if (project) {
+      setDraft(JSON.parse(saved) as ProjectDraft);
+      setServerErrors({});
+      setShowErrors(false);
+      setToast("Changes discarded");
+    } else {
+      router.push("/projects");
     }
   };
 
@@ -246,11 +382,28 @@ export function ProjectEditor({ project }: { project: Project | null }) {
         </div>
         <div className="flex items-center gap-3">
           {dirty && <span className="text-xs text-warn">Unsaved changes</span>}
+          <button onClick={cancel} disabled={saving} className="btn btn-quiet">
+            {project ? "Discard changes" : "Cancel"}
+          </button>
           <button onClick={save} disabled={saving} className="btn btn-brass">
-            <Icon name="save" /> {saving ? "Saving…" : project ? "Save project" : "Create project"}
+            {saving ? <Spinner /> : <Icon name="save" />}
+            {saving ? "Saving…" : project ? "Save project" : "Create project"}
           </button>
         </div>
       </header>
+
+      {conflict && (
+        <div role="alert" className="mt-4 rounded-md border border-warn/40 bg-warn-wash px-4 py-3 text-sm text-warn">
+          <p className="font-medium">Someone else changed this project while you were editing it.</p>
+          <p className="mt-1">
+            Your changes have not been saved, so theirs are intact. Reload to see the current version — you will need to
+            re-enter your edits.
+          </p>
+          <button onClick={() => window.location.reload()} className="btn btn-quiet mt-3 h-8 px-3 text-xs">
+            Reload project
+          </button>
+        </div>
+      )}
 
       {errCount > 0 && (
         <div role="alert" className="mt-4 rounded-md border border-bad/30 bg-bad-wash px-4 py-3 text-sm text-bad">
@@ -266,28 +419,28 @@ export function ProjectEditor({ project }: { project: Project | null }) {
               <div className="sm:col-span-2">
                 <label htmlFor="name" className="field-label">Project name</label>
                 <input id="name" className="input" value={draft.name} aria-invalid={!!errors.name}
-                  onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="e.g. Warehouse fit-out, Unit 4" />
+                  onChange={(e) => patchDraft({ name: e.target.value })} placeholder="e.g. Warehouse fit-out, Unit 4" />
                 {errors.name && <p className="field-error">{errors.name}</p>}
               </div>
               <div>
                 <label htmlFor="client" className="field-label">Client</label>
                 <input id="client" className="input" value={draft.client} aria-invalid={!!errors.client}
-                  onChange={(e) => setDraft({ ...draft, client: e.target.value })} />
+                  onChange={(e) => patchDraft({ client: e.target.value, customerId: null })} />
                 {errors.client && <p className="field-error">{errors.client}</p>}
               </div>
               <div>
                 <label htmlFor="status" className="field-label">Status</label>
                 <select id="status" className="input" value={draft.status}
-                  onChange={(e) => setDraft({ ...draft, status: e.target.value as ProjectDraft["status"] })}>
-                  <option value="quote">Quote</option>
-                  <option value="active">Active</option>
-                  <option value="complete">Complete</option>
+                  onChange={(e) => patchDraft({ status: e.target.value as ProjectDraft["status"] })}>
+                  {(Object.keys(STATUS_LABEL) as (keyof typeof STATUS_LABEL)[]).map((s) => (
+                    <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                  ))}
                 </select>
               </div>
               <div className="sm:col-span-2">
                 <label htmlFor="site" className="field-label">Site address</label>
                 <input id="site" className="input" value={draft.siteAddress}
-                  onChange={(e) => setDraft({ ...draft, siteAddress: e.target.value })} />
+                  onChange={(e) => patchDraft({ siteAddress: e.target.value })} />
               </div>
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md bg-paper px-3 py-2.5 text-xs text-ink-2">
@@ -376,7 +529,14 @@ export function ProjectEditor({ project }: { project: Project | null }) {
             </p>
           </section>
 
-          {project && <History entries={history} />}
+          {project && (
+            <History
+              entries={history}
+              loading={historyLoading}
+              hasMore={!!historyCursor}
+              onMore={() => void loadHistory(historyCursor ?? undefined)}
+            />
+          )}
         </div>
 
         <aside className="panel lg:sticky lg:top-6">
@@ -385,8 +545,9 @@ export function ProjectEditor({ project }: { project: Project | null }) {
               <h2 className="text-[0.95rem] font-semibold">SPFM results</h2>
               <CalcBadge state={state} />
             </div>
-            <button onClick={runCalculate} className="btn btn-primary">
-              <Icon name="calc" /> {state === "never" ? "Calculate" : "Recalculate"}
+            <button onClick={runCalculate} disabled={calculating} className="btn btn-primary">
+              {calculating ? <Spinner /> : <Icon name="calc" />}
+              {calculating ? "Calculating…" : state === "never" ? "Calculate" : "Recalculate"}
             </button>
           </div>
           <div className="px-5 py-4">
@@ -409,6 +570,11 @@ export function ProjectEditor({ project }: { project: Project | null }) {
             )}
             {draft.calculatedAt && (
               <p className="mt-4 text-xs text-muted">Last calculated {fmtDate(draft.calculatedAt)}</p>
+            )}
+            {engineVersion?.startsWith("placeholder") && (
+              <p className="mt-2 rounded-md bg-warn-wash px-3 py-2 text-xs text-warn">
+                These figures come from placeholder formulas, not Shield&apos;s SPFM rules. They are for layout review only.
+              </p>
             )}
           </div>
         </aside>

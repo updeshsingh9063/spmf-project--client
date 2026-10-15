@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CalcBadge, Icon, StatusPill } from "@/components/ui";
+import { CalcBadge, Icon, Spinner, StatusPill } from "@/components/ui";
 import { fmtMoney, fmtPct, fmtRelative } from "@/lib/format";
 import { listProjects } from "@/lib/projectStore";
 import { calcState } from "@/lib/spfm";
@@ -23,7 +23,8 @@ export default function OverviewPage() {
       </div>
     );
 
-  if (!projects) return <p className="text-sm text-muted">Loading projects…</p>;
+  if (!projects)
+    return <p className="flex items-center gap-2 text-sm text-muted"><Spinner /> Loading projects…</p>;
 
   // Totals use projects that are won (active or complete) and have results.
   const won = projects.filter((p) => p.status !== "quote" && p.results);
@@ -43,7 +44,7 @@ export default function OverviewPage() {
         <div>
           <h1 className="display text-[1.75rem] leading-tight">Overview</h1>
           <p className="mt-1 text-sm text-ink-2">
-            Totals cover {won.length} active and completed projects. Quotes are left out.
+            {projects.length} {projects.length === 1 ? "project" : "projects"} in total. Financial figures cover the {won.length} active and completed; quotes are left out.
           </p>
         </div>
         <Link href="/projects/new" className="btn btn-brass">
@@ -51,8 +52,9 @@ export default function OverviewPage() {
         </Link>
       </header>
 
-      <section className="panel mt-6 grid grid-cols-2 lg:grid-cols-4" aria-label="Portfolio totals">
+      <section className="panel mt-6 grid grid-cols-2 lg:grid-cols-5" aria-label="Portfolio totals">
         {[
+          { label: "Total projects", value: String(projects.length) },
           { label: "Contract value", value: fmtMoney(revenue) },
           { label: "Gross profit", value: fmtMoney(gross) },
           { label: "Gross margin", value: fmtPct(grossMargin === null ? null : Math.round(grossMargin * 10) / 10) },
@@ -60,7 +62,7 @@ export default function OverviewPage() {
         ].map((m, i) => (
           <div
             key={m.label}
-            className={`px-5 py-4 ${i % 2 ? "border-l border-line-soft" : ""} ${i > 1 ? "border-t border-line-soft lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}
+            className={`px-5 py-4 ${i % 2 ? "border-l border-line-soft" : ""} ${i > 1 ? "border-t border-line-soft lg:border-t-0" : ""} lg:border-l lg:first:border-l-0`}
           >
             <p className="text-xs text-muted">{m.label}</p>
             <p className={`display mt-1 text-2xl ${m.tone ?? ""}`}>{m.value}</p>

@@ -7,11 +7,12 @@ import { getMe } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { resetSampleData } from "@/lib/projectStore";
-import { Icon } from "./ui";
+import { Icon, Spinner } from "./ui";
 
 const NAV = [
   { href: "/", label: "Overview", icon: "grid" as const },
   { href: "/projects", label: "Projects", icon: "folder" as const },
+  { href: "/profile", label: "Your account", icon: "user" as const },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -33,7 +34,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   if (!ready || !user) {
-    return <div className="grid min-h-screen place-items-center text-sm text-muted">Loading SPFM…</div>;
+    return (
+      <div className="grid min-h-screen place-items-center">
+        <p className="flex items-center gap-2 text-sm text-muted">
+          <Spinner /> {ready ? "Signing in…" : "Loading SPFM…"}
+        </p>
+      </div>
+    );
   }
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
@@ -70,8 +77,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="mt-auto hidden border-t border-white/10 px-5 py-5 md:block">
-          <p className="text-sm font-medium">{user.name}</p>
-          <p className="truncate text-xs text-white/55">{user.email}</p>
+          <Link href="/profile" className="block rounded hover:text-white">
+            <p className="text-sm font-medium">{user.name}</p>
+            <p className="truncate text-xs text-white/55">{user.email}</p>
+          </Link>
           <button
             onClick={signOut}
             className="mt-3 inline-flex items-center gap-2 text-xs text-white/70 hover:text-white"

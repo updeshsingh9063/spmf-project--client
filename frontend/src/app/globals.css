@@ -183,3 +183,15 @@ input[type="number"] {
 .toast {
   animation: toast-in 180ms ease-out;
 }
+
+/* Busy indicator. The only animation in the app: s26 asks for no unnecessary
+   motion, and this one communicates that work is in progress. */
+.spin {
+  animation: spfm-spin 0.7s linear infinite;
+}
+@keyframes spfm-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation-duration: 2.4s; }
+}
