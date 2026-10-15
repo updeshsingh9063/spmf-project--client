@@ -33,6 +33,7 @@ with a record of who changed what.
 | [ROLLBACK-PLAN.md](ROLLBACK-PLAN.md) | What to do when a deployment goes wrong |
 | [ENTRA-SETUP.md](ENTRA-SETUP.md) | Microsoft sign-in configuration |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Deploying to the hosting environment |
+| [DEPLOY-SETTINGS.md](DEPLOY-SETTINGS.md) | Exact Render and Vercel settings, and free-tier caveats |
 | [QUICKBOOKS-MAPPING.md](QUICKBOOKS-MAPPING.md) | How the schema is prepared for Phase 2 |
 | [../README.md](../README.md) | Getting it running locally |
 

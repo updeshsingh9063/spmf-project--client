@@ -1,0 +1,50 @@
+# Render blueprint: API + PostgreSQL.
+#
+# Render > Blueprints > New Blueprint Instance, point it at this repository.
+# The frontend is NOT here -- it deploys to Vercel.
+
+databases:
+  - name: spfm-db
+    databaseName: spfm
+    user: spfm
+    plan: free          # free Postgres is removed after 30 days; move to starter before real data
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: spfm-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .     # the Dockerfile restores from the solution at the repo root
+    plan: free           # free instances sleep after 15 minutes; first request then takes ~50s
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: true
+
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+
+      # Supplied by Render from the database above.
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: spfm-db
+          property: connectionString
+
+      # Public identifiers, not secrets: these are the client's existing Entra
+      # registrations, the same values already in appsettings.Development.json.
+      - key: AzureAd__Instance
+        value: https://login.microsoftonline.com/
+      - key: AzureAd__TenantId
+        value: 83dba18f-9e69-44c9-9af6-ea69f74eb71d
+      - key: AzureAd__ClientId
+        value: 72556310-ab1a-4d95-8375-9f9fe3c0396d
+      - key: AzureAd__Audience
+        value: api://72556310-ab1a-4d95-8375-9f9fe3c0396d
+
+      # The Vercel URL. Set this once the frontend is deployed -- the API refuses
+      # browser requests from any origin not listed here.
+      - key: Cors__AllowedOrigins__0
+        sync: false
