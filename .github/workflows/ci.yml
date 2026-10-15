@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    # A real PostgreSQL, not a fake. The integration tests exist precisely to catch
+    # what an in-memory provider cannot.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - run: dotnet restore SPFM.sln
+      - run: dotnet build SPFM.sln -c Release --no-restore
+
+      # The implementation suite. The acceptance gate is run separately below so a
+      # genuine regression is never confused with "the client has not sent the real
+      # projects yet".
+      - name: Test
+        env:
+          SPFM_TEST_CONNECTION: "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres"
+        run: dotnet test SPFM.sln -c Release --no-build --filter "Category!=AcceptanceGate"
+
+  acceptance-gate:
+    # Reports whether the SPFM calculations have been validated against real Shield
+    # projects (requirements §14, §33). Expected to fail until the client supplies
+    # them; it must never be deleted to make the build green.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - run: dotnet test SPFM.sln -c Release --filter "Category=AcceptanceGate"
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7

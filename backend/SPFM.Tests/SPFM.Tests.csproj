@@ -21,6 +21,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The named real-project cases are data, read at run time. -->
+    <None Update="Calculations/real-projects.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SPFM.Domain\SPFM.Domain.csproj" />
     <ProjectReference Include="..\SPFM.Application\SPFM.Application.csproj" />
     <ProjectReference Include="..\SPFM.Infrastructure\SPFM.Infrastructure.csproj" />

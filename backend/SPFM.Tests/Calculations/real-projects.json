@@ -1,0 +1,46 @@
+{
+  "$comment": [
+    "Named SPFM test cases (requirements §14, §33).",
+    "",
+    "THIS FILE IS WAITING FOR REAL DATA. The single case below is marked",
+    "\"placeholder\" and is skipped by the test run. It exists only to document the",
+    "shape.",
+    "",
+    "When Samuel supplies 2-3 real Shield projects with their known results:",
+    "  1. Add one entry per project, with source: \"shield-real-project\".",
+    "  2. Fill expected with the figures he says are correct.",
+    "  3. Run dotnet test. Every listed case is checked automatically.",
+    "",
+    "Only fill in the expected values you have been given. Any field left out is",
+    "not asserted, so a project with only a known net profit is still a useful case.",
+    "",
+    "These become permanent regression tests and are handed over with the project."
+  ],
+
+  "cases": [
+    {
+      "id": "TEST-SPFM-000",
+      "name": "Shape example - not a real project",
+      "source": "placeholder",
+      "notes": "Delete once real cases are added.",
+      "inputs": {
+        "lines": [
+          { "description": "Steel security door, single", "quantity": 4, "unitCost": 820, "unitPrice": 1350 },
+          { "description": "Roller shutter 3m", "quantity": 2, "unitCost": 2100, "unitPrice": 3200 }
+        ],
+        "variations": 500,
+        "labourHours": 32,
+        "labourRate": 55,
+        "subcontractorCost": 900,
+        "otherDirectCost": 240,
+        "overheadPercent": 12
+      },
+      "expected": {
+        "revenue": 12300,
+        "directCost": 10380,
+        "grossProfit": 1920,
+        "netProfit": 674.4
+      }
+    }
+  ]
+}

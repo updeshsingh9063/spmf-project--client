@@ -6,7 +6,6 @@ namespace SPFM.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/users")]
-[RequiredScope("access_as_user")]
 public class UsersController(
     ICurrentUserAccessor currentUser,
     IUserDirectory users) : ControllerBase

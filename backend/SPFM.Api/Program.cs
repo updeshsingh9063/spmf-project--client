@@ -34,10 +34,34 @@ builder.Services
 // Every endpoint requires an authenticated user unless it opts out with
 // [AllowAnonymous]. The alternative — remembering [Authorize] on each controller —
 // fails open: one forgotten attribute publishes financial data (requirements s21).
+// The scope the frontend's access token must carry. Configurable so a different
+// tenant setup does not need a code change.
+var requiredScope = builder.Configuration["AzureAd:RequiredScope"] ?? "access_as_user";
+
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
+        .RequireAssertion(context => HasScope(context.User, requiredScope))
         .Build());
+
+// Scope is enforced here, in the policy, rather than with [RequiredScope].
+// That attribute is only metadata: without its policy provider registered it
+// passes silently, which is worse than having no check because the code reads as
+// protected. A policy is evaluated on every request and can be tested directly.
+static bool HasScope(System.Security.Claims.ClaimsPrincipal user, string required)
+{
+    // Entra issues scopes space-separated, under "scp" or the long claim URI
+    // depending on token version.
+    foreach (var type in (string[])["scp", "http://schemas.microsoft.com/identity/claims/scope"])
+    {
+        var value = user.FindFirst(type)?.Value;
+        if (value is null) continue;
+
+        foreach (var scope in value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            if (string.Equals(scope, required, StringComparison.Ordinal)) return true;
+    }
+    return false;
+}
 
 // ---- CORS ----------------------------------------------------------------
 builder.Services.Configure<CorsSettings>(builder.Configuration.GetSection(CorsSettings.SectionName));

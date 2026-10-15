@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using SPFM.Domain.Calculations;
 using SPFM.Domain.Entities;
 
@@ -54,7 +55,8 @@ public sealed record ProjectDetailDto(
     string? EngineVersion,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    string ETag);
+    // Without this it serializes as "eTag", which no client would guess.
+    [property: JsonPropertyName("etag")] string ETag);
 
 public sealed record SaveProjectRequest
 {

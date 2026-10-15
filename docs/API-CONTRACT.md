@@ -1,84 +1,239 @@
-# SPFM API contract
+# API contract
 
-What the frontend expects from the ASP.NET Core backend when
-`NEXT_PUBLIC_DATA_MODE=api`. `mock-api/server.mjs` implements this contract
-for frontend development (`npm run mock-api`).
+The SPFM API as built. Verified by the tests in `SPFM.Tests/Integration/ApiTests.cs`.
 
-## Rules for every endpoint
+Base path `/api/v1`. Generated reference at `/swagger` when running in Development.
 
-- Every request carries `Authorization: Bearer <access token>` for the scope in
-  `NEXT_PUBLIC_ENTRA_API_SCOPE`. Reject missing or invalid tokens with **401**.
-- Only signed-in Shield users may use the API. Return **403** for anyone else.
-- JSON in and out, camelCase property names (the ASP.NET Core default).
-- Errors return a JSON body with a `title` (ProblemDetails is fine). The
-  frontend shows `title` to the user, so write it as a plain sentence.
-- CORS: allow the frontend origin(s), the `Authorization` and `Content-Type`
-  headers, and `GET, POST, PUT`.
+---
 
-## Endpoints
+## Authentication
 
-| Method | Path | Returns | Notes |
-|---|---|---|---|
-| GET | `/api/users/me` | `{ name, email }` | Existing endpoint. Used to confirm sign-in reaches the API. |
-| GET | `/api/projects` | `Project[]` | All projects. Sorting is done on the frontend. |
-| GET | `/api/projects/{id}` | `Project` | 404 if it doesn't exist. |
-| POST | `/api/projects` | `Project` (201) | Body: `ProjectDraft`. Server assigns `id`, `number`, timestamps, first history entry. |
-| PUT | `/api/projects/{id}` | `Project` | Body: `ProjectDraft`. Server records a history entry if anything changed. |
+Every endpoint except `/health` and `/health/ready` requires a Microsoft Entra
+access token:
 
-## Shapes
+```
+Authorization: Bearer <access token>
+```
 
-TypeScript definitions are in `src/lib/types.ts` (the source of truth) and
-`ProjectDraft` in `src/lib/projectStore.ts`.
+The token must carry the `access_as_user` scope. It is enforced by the
+authorization policy, not by an attribute, so a new endpoint is protected the
+moment it exists — nothing has to be remembered.
 
-```jsonc
-// ProjectDraft (request body for POST and PUT)
+| Situation | Response |
+|---|---|
+| No token | `401` with `WWW-Authenticate: Bearer` |
+| Invalid or expired token | `401` with `Bearer error="invalid_token"` |
+| Valid token, missing scope | `403` |
+| Route that does not exist, unauthenticated | `401` — the API does not reveal which routes exist |
+
+---
+
+## Errors
+
+Every error is an RFC 9457 problem document with content type
+`application/problem+json`:
+
+```json
 {
-  "name": "Warehouse fit-out, Unit 4",
-  "client": "Harbour Logistics",
-  "siteAddress": "4 Dockside Road",
-  "status": "active",                 // "quote" | "active" | "complete"
-  "inputs": {
-    "products": [
-      { "id": "uuid", "description": "Steel security door, single", "qty": 4,
-        "unitCost": 820, "unitPrice": 1350, "qbItemId": null }
-    ],
-    "variations": 500, "labourHours": 32, "labourRate": 55,
-    "subcontractorCost": 900, "otherDirectCost": 240, "overheadPct": 12
-  },
-  "results": { /* SpfmResults, or null if not calculated */ },
-  "calculatedFor": "fingerprint string or null",
-  "calculatedAt": "2026-10-13T09:30:00Z"
-}
-
-// Project (response) = ProjectDraft plus:
-{
-  "id": "uuid",
-  "number": "SSD-2026-014",           // server-generated, unique
-  "quickbooks": { "customerId": null, "projectId": null, "lastSyncedAt": null },
-  "history": [
-    { "id": "uuid", "at": "ISO date", "by": "Samuel Fish", "action": "updated",
-      "changes": [ { "field": "Labour hours", "from": "12", "to": "16" } ] }
-  ],                                   // newest first
-  "createdAt": "ISO date",
-  "updatedAt": "ISO date"
+  "title": "Project changed elsewhere",
+  "detail": "This project was changed by someone else while you were editing it.",
+  "status": 409,
+  "instance": "/api/v1/projects/8f14e45f-ceea-467a-9575-1e0a5e39f5a1",
+  "traceId": "0HN7G2M8K1QJ9:00000003"
 }
 ```
 
-## Server-side validation
+`detail` is written for a person and can be shown as-is. `traceId` matches the
+server log entry.
 
-Repeat the checks in `validate()` (`src/lib/spfm.ts`) and return **400** with a
-readable `title` when they fail: name and client required, at least one
-product line, whole-number quantity of 1 or more, money values 0 or more,
-overhead between 0 and 100.
+Validation failures add `errors`, keyed by field so the UI can attach each message
+to its input:
 
-## Calculations
+```json
+{
+  "title": "One or more validation errors occurred.",
+  "status": 400,
+  "errors": {
+    "name": ["Enter a project name."],
+    "lines.1.quantity": ["Enter a quantity of 1 or more."]
+  }
+}
+```
 
-For the Alpha the frontend runs the calculations and sends `results` with the
-draft. Recommended: the API also recomputes `results` with the same rules
-(`src/lib/spfm.ts` and the cases in `src/lib/testCases.ts`) and stores its own
-answer, so saved figures never depend on the browser.
+---
 
-## History
+## Endpoints
 
-`by` comes from the token (the `name` claim), never from the request body.
-Field labels can follow `src/lib/history.ts` so entries read the same in both modes.
+### `GET /health` · `GET /health/ready`
+
+Anonymous. `/health` is liveness — the process is up. `/health/ready` is readiness
+and includes the database, returning `503` when it is unreachable. Orchestrators
+should restart on liveness and withhold traffic on readiness; a database blip must
+not kill a healthy process.
+
+### `GET /api/v1/users/me`
+
+Returns the signed-in user, creating the record on first sign-in.
+
+```json
+{ "id": "…", "name": "Samuel Fish", "email": "samuel@shieldsecuritydoors.com" }
+```
+
+Name and email only. The full claim set is deliberately not exposed (§22).
+
+### `GET /api/v1/projects`
+
+| Query | Meaning |
+|---|---|
+| `q` | Substring match on project name, number or customer, case-insensitive |
+| `status` | `quote` · `active` · `complete` · `archived` |
+| `cursor` | Opaque; from the previous page's `nextCursor` |
+| `limit` | 1–100, default 25 |
+
+```json
+{
+  "items": [
+    {
+      "id": "…", "number": "SSD-2026-014", "name": "Warehouse fit-out",
+      "customerName": "Bayview Logistics", "status": "quote",
+      "revenue": 12300.0000, "netProfit": 674.4000,
+      "calculationState": "current", "updatedAt": "2026-10-15T14:32:11.1234567+00:00"
+    }
+  ],
+  "nextCursor": "MTcyOTAwMDAwMDA6OGYxNGU0NWY…"
+}
+```
+
+`nextCursor` is `null` on the last page. Cursors are opaque — do not parse or
+construct them. An unrecognised cursor restarts the list rather than failing, since
+stale bookmarks are ordinary.
+
+Paging is keyset, not offset, so page 20 costs what page 1 costs.
+
+### `GET /api/v1/projects/{id}`
+
+The full project. Responds with an `ETag` header, which the client must send back
+as `If-Match` when saving.
+
+```json
+{
+  "id": "…", "number": "SSD-2026-014", "name": "Warehouse fit-out",
+  "customerId": "…", "customerName": "Bayview Logistics",
+  "siteAddress": "12 Dock Road", "status": "quote",
+  "lines": [
+    { "description": "Steel security door", "quantity": 4.0000,
+      "unitCost": 820.0000, "unitPrice": 1350.0000 }
+  ],
+  "variations": 0.0000, "labourHours": 32.0000, "labourRate": 55.0000,
+  "subcontractorCost": 0.0000, "otherDirectCost": 0.0000, "overheadPercent": 12.0000,
+  "results": { "revenue": 5400.00, "netProfit": 1428.80, "…": "…" },
+  "calculationState": "current",
+  "calculatedAt": "2026-10-15T14:32:11+00:00",
+  "engineVersion": "placeholder-1.0.0",
+  "createdAt": "…", "updatedAt": "…",
+  "etag": "\"817\""
+}
+```
+
+**`calculationState`** — `never`, `outdated` or `current`. The server decides it by
+comparing the stored results' input fingerprint with the project's current inputs.
+The client must not compute it: browser arithmetic is floating point and would
+disagree. `outdated` means the figures shown no longer match the inputs (§16).
+
+**`engineVersion`** — which formula set produced the stored results. While it starts
+`placeholder`, the figures came from stand-in formulas, not Shield's SPFM rules.
+
+**`results`** is `null` until the project has been calculated.
+
+### `POST /api/v1/projects` → `201`
+
+```json
+{
+  "number": null,
+  "name": "Warehouse fit-out",
+  "customerId": null,
+  "customerName": "Bayview Logistics",
+  "siteAddress": "12 Dock Road",
+  "status": "quote",
+  "lines": [{ "description": "Steel security door", "quantity": 4, "unitCost": 820, "unitPrice": 1350 }],
+  "variations": 0, "labourHours": 32, "labourRate": 55,
+  "subcontractorCost": 0, "otherDirectCost": 0, "overheadPercent": 12
+}
+```
+
+`number` omitted is generated. `customerId` omitted creates or reuses a customer by
+name, matched case-insensitively.
+
+`409` if the project number is already taken.
+
+### `PUT /api/v1/projects/{id}`
+
+Same body. **Requires `If-Match`** with the ETag from the last read.
+
+| | |
+|---|---|
+| `200` | Saved; the response carries a new ETag |
+| `428` | No `If-Match`. The caller cannot prove which version it is editing |
+| `409` | Someone else saved first. Nothing was written, and their change is intact |
+
+Sending `If-Match: *` opts out of the check deliberately. The frontend never does.
+
+### `POST /api/v1/projects/{id}/calculate`
+
+Runs the SPFM calculations against the project's **saved** inputs and appends a
+calculation run.
+
+```json
+{ "results": { "…": "…" }, "calculationState": "current", "engineVersion": "placeholder-1.0.0" }
+```
+
+Takes no body: the figures of record must correspond to a project someone can
+reopen. Unsaved edits must be saved first.
+
+Runs are append-only — calculating again adds a row rather than replacing one, so
+what the figures said on a given date stays answerable.
+
+`400` with field-keyed `errors` when the saved inputs are not valid.
+
+### `GET /api/v1/projects/{id}/history`
+
+Change history, newest first, paged with `cursor` and `limit`.
+
+```json
+{
+  "items": [
+    {
+      "id": "…", "by": "Updesh", "action": "updated",
+      "at": "2026-10-15T14:32:11+00:00",
+      "changes": [{ "field": "Labour hours", "from": "32", "to": "40" }]
+    }
+  ],
+  "nextCursor": null
+}
+```
+
+`action` is `created`, `updated` or `calculated`. Field labels are the words on the
+form, not property names. A save that changed nothing records no entry.
+
+---
+
+## Conventions
+
+**Money** is `decimal` end to end — `numeric(18,4)` in PostgreSQL, `decimal` in C#.
+It is never a floating-point type anywhere in the system (§29). All arithmetic
+happens server-side; the browser formats and displays.
+
+**Percentages** are `null`, not `0`, when the denominator is zero. A project with no
+revenue has no margin, which is not the same as a zero margin.
+
+**Enums** travel as words (`"quote"`), never numbers.
+
+**Timestamps** are ISO 8601 with offset, always UTC.
+
+---
+
+## Reserved for Phase 2
+
+`/api/v1/quickbooks/*` — connect, sync, import, mapping, status. Not implemented.
+The data model carries nullable `qboCustomerId`, `qboProjectId` and `qboItemId` so
+the import can populate them without a rebuild (§19).

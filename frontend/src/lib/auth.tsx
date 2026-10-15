@@ -116,7 +116,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(PREVIEW_USER);
       try {
         window.localStorage.setItem(PREVIEW_KEY, JSON.stringify(PREVIEW_USER));
-      } catch {}
+      } catch {
+        // Private browsing or blocked storage. The session still works for this
+        // tab; it simply will not survive a reload. Preview mode only.
+      }
       return;
     }
     msal.current?.loginRedirect({ scopes: [config.entra.apiScope], prompt: "select_account" }).catch((e) =>
@@ -129,7 +132,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (mode === "preview") {
       try {
         window.localStorage.removeItem(PREVIEW_KEY);
-      } catch {}
+      } catch {
+        // Storage unavailable. The in-memory sign-out above has already happened,
+        // which is what matters.
+      }
       return;
     }
     const app = msal.current;

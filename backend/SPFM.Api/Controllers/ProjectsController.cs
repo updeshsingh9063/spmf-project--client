@@ -11,8 +11,6 @@ namespace SPFM.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/projects")]
-[RequiredScope("access_as_user")]
-[Produces("application/json")]
 public class ProjectsController(
     IProjectRepository projects,
     ICurrentUserAccessor currentUser,
@@ -85,15 +83,14 @@ public class ProjectsController(
         }
         catch (DuplicateProjectNumberException e)
         {
-            return Problem(
-                title: "Project number already in use",
-                detail: $"Project number '{e.Number}' belongs to another project. Choose a different number.",
-                statusCode: StatusCodes.Status409Conflict);
+            return ProblemResult(
+                "Project number already in use",
+                $"Project number '{e.Number}' belongs to another project. Choose a different number.",
+                StatusCodes.Status409Conflict);
         }
         catch (ArgumentException e)
         {
-            return Problem(title: "Invalid project", detail: e.Message,
-                statusCode: StatusCodes.Status400BadRequest);
+            return ProblemResult("Invalid project", e.Message, StatusCodes.Status400BadRequest);
         }
     }
 
@@ -111,11 +108,11 @@ public class ProjectsController(
         // is editing (requirements s29).
         if (!TryReadIfMatch(out var expectedVersion))
         {
-            return Problem(
-                title: "If-Match required",
-                detail: "Re-open the project and try again. Saving needs the version you loaded, " +
-                        "so another person's changes cannot be overwritten silently.",
-                statusCode: StatusCodes.Status428PreconditionRequired);
+            return ProblemResult(
+                "If-Match required",
+                "Re-open the project and try again. Saving needs the version you loaded, " +
+                "so another person's changes cannot be overwritten silently.",
+                StatusCodes.Status428PreconditionRequired);
         }
 
         var actor = await RequireActorAsync(ct);
@@ -136,15 +133,14 @@ public class ProjectsController(
         }
         catch (ConcurrencyConflictException e)
         {
-            return Problem(title: "Project changed elsewhere", detail: e.Message,
-                statusCode: StatusCodes.Status409Conflict);
+            return ProblemResult("Project changed elsewhere", e.Message, StatusCodes.Status409Conflict);
         }
         catch (DuplicateProjectNumberException e)
         {
-            return Problem(
-                title: "Project number already in use",
-                detail: $"Project number '{e.Number}' belongs to another project.",
-                statusCode: StatusCodes.Status409Conflict);
+            return ProblemResult(
+                "Project number already in use",
+                $"Project number '{e.Number}' belongs to another project.",
+                StatusCodes.Status409Conflict);
         }
     }
 
@@ -255,10 +251,33 @@ public class ProjectsController(
         return identity is null ? null : await users.GetOrCreateAsync(identity, ct);
     }
 
-    private IActionResult NotFoundProblem(Guid id) => Problem(
-        title: "Project not found",
-        detail: $"No project with id {id} exists.",
-        statusCode: StatusCodes.Status404NotFound);
+    private IActionResult NotFoundProblem(Guid id) =>
+        ProblemResult("Project not found", $"No project with id {id} exists.", StatusCodes.Status404NotFound);
+
+    /// <summary>
+    /// An RFC 9457 problem document with the media type pinned.
+    ///
+    /// ControllerBase.Problem() leaves the content type to negotiation, so a caller
+    /// sending "Accept: application/json" receives application/json and cannot
+    /// distinguish an error document from a successful payload.
+    /// </summary>
+    private IActionResult ProblemResult(string title, string detail, int statusCode)
+    {
+        var problem = new ProblemDetails
+        {
+            Title = title,
+            Detail = detail,
+            Status = statusCode,
+            Instance = HttpContext.Request.Path,
+            Extensions = { ["traceId"] = HttpContext.TraceIdentifier },
+        };
+
+        return new ObjectResult(problem)
+        {
+            StatusCode = statusCode,
+            ContentTypes = { "application/problem+json" },
+        };
+    }
 
     private IActionResult? Validate(SaveProjectRequest request)
     {
