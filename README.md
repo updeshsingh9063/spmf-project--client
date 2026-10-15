@@ -6,6 +6,7 @@ Internal project financial management application for Shield Security Doors.
 > client's specification. See [Known limitations](#known-limitations).
 
 Design and rationale: **[docs/SYSTEM-DESIGN.md](docs/SYSTEM-DESIGN.md)**
+Testing it yourself: **[docs/TEST-RUNBOOK.md](docs/TEST-RUNBOOK.md)**
 
 ---
 

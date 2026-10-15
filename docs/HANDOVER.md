@@ -27,6 +27,7 @@ with a record of who changed what.
 | | |
 |---|---|
 | [SYSTEM-DESIGN.md](SYSTEM-DESIGN.md) | Architecture and the reasoning behind each decision |
+| [TEST-RUNBOOK.md](TEST-RUNBOOK.md) | Step-by-step manual testing, with requirement coverage |
 | [API-CONTRACT.md](API-CONTRACT.md) | Every endpoint, verified by tests |
 | [REQUIREMENTS-COVERAGE.md](REQUIREMENTS-COVERAGE.md) | Section-by-section status |
 | [ROLLBACK-PLAN.md](ROLLBACK-PLAN.md) | What to do when a deployment goes wrong |
