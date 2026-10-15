@@ -62,10 +62,15 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public SpfmDbContext CreateContext()
     {
-        var options = new DbContextOptionsBuilder<SpfmDbContext>()
-            .UseNpgsql(ConnectionString)
-            .Options;
-        return new SpfmDbContext(options);
+        var builder = new DbContextOptionsBuilder<SpfmDbContext>().UseNpgsql(ConnectionString);
+
+        // SPFM_TEST_SQL=1 prints the generated SQL. Invaluable when a write behaves
+        // differently against a real database than against the model.
+        if (Environment.GetEnvironmentVariable("SPFM_TEST_SQL") == "1")
+            builder.LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information)
+                   .EnableSensitiveDataLogging();
+
+        return new SpfmDbContext(builder.Options);
     }
 
     public async Task DisposeAsync()

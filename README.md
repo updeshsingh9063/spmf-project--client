@@ -17,7 +17,7 @@ Design and rationale: **[docs/SYSTEM-DESIGN.md](docs/SYSTEM-DESIGN.md)**
 | Database | PostgreSQL 16, EF Core 9 (Npgsql) |
 | Auth | Microsoft Entra ID (JWT bearer) + MSAL |
 | Frontend | Next.js 16, TypeScript, Tailwind v4 |
-| Tests | xUnit, Shouldly, Testcontainers / Vitest, Playwright |
+| Tests | xUnit, Shouldly / Vitest, Playwright |
 
 ## Layout
 
@@ -43,7 +43,7 @@ engine stops being testable without a database, that rule has been broken.
 ### Prerequisites
 - .NET 9 SDK
 - Node.js 20+
-- Docker (for PostgreSQL)
+- PostgreSQL 16 (Docker, a local install, or the binaries — see below)
 
 ### 1. Database
 
@@ -118,8 +118,9 @@ cd frontend && npm test          # frontend unit
 cd frontend && npm run test:e2e  # Playwright
 ```
 
-Integration tests start a real PostgreSQL container via Testcontainers, so Docker
-must be running. Unit and schema tests need neither a database nor Docker.
+Integration tests need a reachable PostgreSQL server (see
+[Running PostgreSQL without Docker](#running-postgresql-without-docker)). Unit and
+schema tests need neither a database nor Docker.
 
 ---
 
@@ -156,3 +157,56 @@ $env:DOTNET_CLI_HOME      = "D:\dotnet-home"
 
 Included and excluded work is defined by requirements §41–42. QuickBooks import,
 user roles, data exports and advanced error monitoring are **not** in this phase.
+
+---
+
+## Running PostgreSQL without Docker
+
+Where Docker is unavailable (or the system drive has no space), the PostgreSQL
+binaries run directly from disk — no installer, no service, nothing written outside
+the directories below.
+
+```powershell
+# One-off: initialise a data directory
+D:\pgsql\bin\initdb.exe -D D:\pgdata -U postgres --pwfile=<file with password> -E UTF8 --locale=C
+
+# Start / stop
+D:\pgsql\bin\pg_ctl.exe -D D:\pgdata -l D:\pgdata\server.log -o "-p 5432" start
+D:\pgsql\bin\pg_ctl.exe -D D:\pgdata stop
+
+# Create the application role and database
+D:\pgsql\bin\psql.exe -h localhost -U postgres -c "CREATE ROLE spfm LOGIN PASSWORD 'spfm123';"
+D:\pgsql\bin\psql.exe -h localhost -U postgres -c "CREATE DATABASE spfm OWNER spfm;"
+```
+
+Binaries: <https://www.enterprisedb.com/download-postgresql-binaries> (16.x, win-x64).
+
+### Integration tests
+
+They create a throwaway database per run and apply the migrations to it, so they
+prove the migrations work rather than only that the model is shaped correctly.
+
+```powershell
+$env:SPFM_TEST_CONNECTION = "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres"
+dotnet test
+```
+
+`SPFM_TEST_SQL=1` prints the generated SQL — the quickest way to see why a write
+behaves differently against a real database.
+
+With no PostgreSQL reachable they **fail**, naming the reason, rather than skipping:
+a suite that reports green without running is worse than no suite. To exclude them
+deliberately:
+
+```powershell
+dotnet test --filter "Category!=Integration"
+```
+
+### End-to-end tests
+
+```powershell
+$env:PLAYWRIGHT_BROWSERS_PATH = "D:\playwright-browsers"   # if not on the system drive
+cd frontend
+npx playwright install chromium   # first run only
+npx playwright test
+```

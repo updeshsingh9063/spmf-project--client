@@ -4,7 +4,7 @@ Section-by-section status against `SPFM_Requirements.pdf` (48 sections).
 
 **Legend** — ✅ done · 🔶 partial · ⬜ not started · ⛔ blocked on the client · ➖ out of scope
 
-Last reviewed: 15 October 2026
+Last reviewed: 15 October 2026 (database verification complete)
 
 ---
 
@@ -53,13 +53,13 @@ Last reviewed: 15 October 2026
 | 11 | Calculation engine separated from UI | ✅ | `SPFM.Domain` — zero dependencies |
 | 15 | Users, Projects, SPFM data, results, history | ✅ | 7 entities |
 | 15 | QuickBooks mapping ready | ✅ | Nullable QBO columns, `Customer` as its own table |
-| 16 | Create, save, reopen, retrieve, edit, recalculate, update | 🔶 | Implemented; **never run against a live database** |
+| 16 | Create, save, reopen, retrieve, edit, recalculate, update | ✅ | Verified against live PostgreSQL |
 | 17 | Change history: user, field, old, new, timestamp | ✅ | `ChangeSet` + `FieldChange`, real diffs only |
 | 20 | API groups: auth, users, projects, calculations, history | ✅ | 8 endpoints under `/api/v1` |
 | 21 | All sensitive APIs authenticated | ✅ | Default-deny fallback policy — verified |
 | 22 | Consistent responses, no sensitive leakage | ✅ | RFC 9457 ProblemDetails with `traceId` |
 | 29 | Decimal money, deterministic calculations | ✅ | `decimal` / `numeric(18,4)`; browser engine is preview-only |
-| 30 | Migrations, reproducible database | 🔶 | `InitialCreate` written; **never applied** |
+| 30 | Migrations, reproducible database | ✅ | Applied to a real database; verified by test |
 | 31 | Environment configuration, no committed secrets | ✅ | Fail-fast startup validation |
 
 ## Blocked on the client
@@ -73,15 +73,18 @@ Last reviewed: 15 October 2026
 | 28 | Real project statuses | ⛔ Placeholders |
 | 7 | Project numbering format | ⛔ `SSD-{year}-{nnn}` assumed |
 
-## Not yet started
+## Testing and delivery
 
 | § | Requirement | Status |
 |---|---|---|
-| 32 | Integration tests against a real database | ⬜ Needs Docker (blocked: C: drive full) |
-| 34 | Second full testing pass | ⬜ After the above |
-| 35 | Rollback plan | ⬜ Designed, not written up |
+| 13 | Automated calculation tests | ✅ 23 unit tests, mutation-checked |
+| 32 | Integration tests against a real database | ✅ 12 tests against live PostgreSQL |
+| 32 | End-to-end test of the full workflow | ✅ 10 Playwright tests, desktop and laptop |
+| 35 | Rollback plan | ✅ [ROLLBACK-PLAN.md](ROLLBACK-PLAN.md), with its limitations stated |
+| 14, 33 | Named real-project test cases | ⛔ Blocked: no real projects supplied |
+| 34 | Second full testing pass | ⬜ After the formulas arrive |
 | 36–37 | Deployment and production verification | ⬜ Needs Azure access |
-| 38–39 | Full handover documentation | 🔶 README and design done |
+| 38–39 | Full handover documentation | 🔶 README, design, rollback done |
 | 40 | 2 months priority support | ➖ Post-delivery |
 
 ## Explicitly out of scope (§42)
@@ -99,7 +102,8 @@ remains splits in two:
 1. **Six items only Samuel can supply** — above all the formulas and the real
    project examples. Without them the calculations are unverifiable, and §14 is
    explicit that correctness must not be judged by whether the UI looks right.
-2. **Three verification gaps needing a working environment** — the database has
-   never been created, API mode has never been exercised end to end, and the E2E
-   suite cannot run without a browser download. All three are blocked on free disk
-   space on the development machine.
+2. **One verification gap left.** The database is created, the migrations apply, 76
+   backend tests and 10 end-to-end tests pass. What has *not* been exercised is a
+   real Microsoft sign-in against the live API: that needs a Shield work account.
+   Every layer beneath it — token rejection, default-deny, the repository, the
+   schema — is covered.

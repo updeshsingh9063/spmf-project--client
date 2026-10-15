@@ -135,8 +135,17 @@ public sealed partial class ProjectRepository(SpfmDbContext db, ISpfmCalculator 
         // Lines are replaced wholesale rather than merged. They carry no stable
         // client-side identity, so matching them up would be guesswork; the table is
         // small and scoped to one project, so the cost is negligible.
-        db.ProjectLines.RemoveRange(project.Lines);
-        project.Lines = [.. request.Lines.Select((l, i) => new ProjectLine
+        //
+        // Both halves go through the DbSet. Assigning project.Lines instead lets EF's
+        // relationship fixup pair a new row with a deleted one and emit an UPDATE
+        // against a row it is also deleting. That statement affects zero rows, which
+        // EF reports as DbUpdateConcurrencyException -- so every save failed as a
+        // phantom "changed by someone else" conflict. Caught by the integration tests;
+        // invisible to tests that never touch a database.
+        foreach (var existing in project.Lines.ToList())
+            db.ProjectLines.Remove(existing);
+
+        db.ProjectLines.AddRange(request.Lines.Select((l, i) => new ProjectLine
         {
             ProjectId = project.Id,
             Ordinal = i,
@@ -144,9 +153,11 @@ public sealed partial class ProjectRepository(SpfmDbContext db, ISpfmCalculator 
             Quantity = l.Quantity,
             UnitCost = l.UnitCost,
             UnitPrice = l.UnitPrice,
-        })];
+        }));
 
-        project.InputsFingerprint = calculator.Fingerprint(ProjectInputsMapper.ToInputs(project));
+        // Computed from the request, not from the entity: the entity's Lines
+        // collection still holds the rows being deleted.
+        project.InputsFingerprint = calculator.Fingerprint(ProjectInputsMapper.ToInputs(request));
     }
 
     private async Task<Customer> ResolveCustomerAsync(SaveProjectRequest request, CancellationToken ct)
