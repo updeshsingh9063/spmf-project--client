@@ -9,9 +9,13 @@ import { config } from "@/lib/config";
 import { resetSampleData } from "@/lib/projectStore";
 import { Icon, Spinner } from "./ui";
 
+// Ticket 1: primary navigation is Work Queue, Projects and Financial Review.
+// Financial Review stays disabled until Ticket 19 builds it -- showing it greyed
+// out tells the user the workspace is coming, rather than hiding it entirely.
 const NAV = [
-  { href: "/", label: "Overview", icon: "grid" as const },
+  { href: "/", label: "Work Queue", icon: "queue" as const },
   { href: "/projects", label: "Projects", icon: "folder" as const },
+  { href: "/financial-review", label: "Financial Review", icon: "period" as const, disabled: true },
   { href: "/profile", label: "Your account", icon: "user" as const },
 ];
 
@@ -59,21 +63,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex gap-1 px-3 pb-3 md:flex-col md:pb-0" aria-label="Main">
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={isActive(item.href) ? "page" : undefined}
-              className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
-                isActive(item.href)
-                  ? "bg-white/10 font-medium text-white shadow-[inset_3px_0_0_var(--color-brass)]"
-                  : "text-white/70 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              <Icon name={item.icon} />
-              {item.label}
-            </Link>
-          ))}
+          {NAV.map((item) =>
+            item.disabled ? (
+              <span
+                key={item.href}
+                aria-disabled="true"
+                title="Available in a later ticket"
+                className="flex cursor-not-allowed items-center gap-2.5 rounded-md px-3 py-2 text-sm text-white/35"
+              >
+                <Icon name={item.icon} />
+                {item.label}
+              </span>
+            ) : (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isActive(item.href) ? "page" : undefined}
+                className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
+                  isActive(item.href)
+                    ? "bg-white/10 font-medium text-white shadow-[inset_3px_0_0_var(--color-brass)]"
+                    : "text-white/70 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <Icon name={item.icon} />
+                {item.label}
+              </Link>
+            ),
+          )}
         </nav>
 
         <div className="mt-auto hidden border-t border-white/10 px-5 py-5 md:block">

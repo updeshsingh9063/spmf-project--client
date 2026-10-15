@@ -1,40 +1,30 @@
 // Project repository.
 //
-// Two modes, chosen by NEXT_PUBLIC_DATA_MODE (see .env.example):
+// TICKET 1. Reduced to project identity: create, list, search, open, save, history.
+// The calculate path is gone with the rest of the job-costing workflow — SPFM's
+// figures come from QuickBooks records and shipment decisions, computed server-side
+// (Ticket 3), never in the browser.
 //
-//  - "api" (production): the ASP.NET Core API, called with the signed-in user's
-//    Entra access token. The server owns the calculations, the change history and
-//    concurrency control.
-//
-//  - "local" (preview): projects kept in this browser with sample data, so the whole
-//    create -> calculate -> save -> reopen loop can be demonstrated without a backend
-//    or a Shield account. Calculations run in the browser and are PREVIEW ONLY.
+// Two modes, chosen by NEXT_PUBLIC_DATA_MODE:
+//  - "api": the ASP.NET Core API, with the signed-in user's Entra access token
+//  - "local": projects kept in this browser, so the shell can be demonstrated
+//    without a backend. Goes away once projects come from QuickBooks (Ticket 6).
 
 import { apiGet, apiPost, apiPut } from "./api";
 import {
   summaryToProject,
   toFormField,
   toProject,
-  toResults,
   toSaveRequest,
   type ApiChangeSet,
   type ApiPage,
   type ApiProjectDetail,
   type ApiProjectSummary,
-  type ApiResults,
 } from "./apiMapping";
 import { config } from "./config";
 import { diffProjects } from "./history";
 import { seedProjects } from "./seed";
-import { calculate, fingerprint } from "./spfm";
-import type {
-  CalculationState,
-  HistoryEntry,
-  Project,
-  ProjectInputs,
-  ProjectStatus,
-  SpfmResults,
-} from "./types";
+import type { HistoryEntry, Project, ProjectStatus } from "./types";
 
 export interface ProjectDraft {
   name: string;
@@ -42,31 +32,19 @@ export interface ProjectDraft {
   customerId?: string | null;
   siteAddress: string;
   status: ProjectStatus;
-  inputs: ProjectInputs;
-  results: Project["results"];
-  calculatedFor: string | null;
-  calculatedAt: string | null;
 }
 
 const apiMode = () => config.dataMode === "api";
 
-/* ---------- local (browser) storage: preview mode only ---------- */
+/* ---------- local (browser) storage: preview only ---------- */
 
-const KEY = "spfm.projects.v1";
-
-function normalize(p: Partial<Project> & Pick<Project, "id">): Project {
-  return {
-    ...(p as Project),
-    quickbooks: p.quickbooks ?? { customerId: null, projectId: null, lastSyncedAt: null },
-    history: p.history ?? [],
-  };
-}
+const KEY = "spfm.projects.v2";
 
 function readAll(): Project[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(KEY);
-    if (raw) return (JSON.parse(raw) as Project[]).map(normalize);
+    if (raw) return (JSON.parse(raw) as Project[]).map((p) => ({ ...p, history: p.history ?? [] }));
   } catch {
     /* storage unavailable or corrupt: fall back to sample data */
   }
@@ -122,8 +100,6 @@ export async function listProjects(
     return { projects: data.items.map(summaryToProject), nextCursor: data.nextCursor };
   }
 
-  // Local mode filters in the browser: the dataset is sample data, so paging it
-  // would add complexity for no benefit.
   const q = options.query?.trim().toLowerCase();
   const projects = readAll()
     .filter(
@@ -159,9 +135,10 @@ export async function createProject(draft: ProjectDraft, by: string): Promise<Pr
   const now = new Date().toISOString();
   const project: Project = {
     ...draft,
+    customerId: draft.customerId ?? null,
     id: crypto.randomUUID(),
     number: nextNumber(all),
-    quickbooks: { customerId: null, projectId: null, lastSyncedAt: null },
+    etag: null,
     history: [entry(by, "created", [])],
     createdAt: now,
     updatedAt: now,
@@ -177,8 +154,8 @@ export async function updateProject(
   etag?: string | null,
 ): Promise<Project> {
   if (apiMode()) {
-    // If-Match carries the version this browser loaded. If someone else saved in the
-    // meantime the API answers 409 rather than letting one edit erase the other.
+    // If-Match carries the version this browser loaded, so a stale save is refused
+    // rather than overwriting someone else's edit.
     const { data, etag: newEtag } = await apiPut<ApiProjectDetail>(
       `/api/v1/projects/${encodeURIComponent(id)}`,
       toSaveRequest(draft),
@@ -190,6 +167,7 @@ export async function updateProject(
   const all = readAll();
   const i = all.findIndex((p) => p.id === id);
   if (i < 0) throw new Error("This project no longer exists.");
+
   const changes = diffProjects(all[i], draft);
   const updated: Project = {
     ...all[i],
@@ -200,46 +178,6 @@ export async function updateProject(
   all[i] = updated;
   writeAll(all);
   return updated;
-}
-
-/**
- * Runs the SPFM calculations.
- *
- * In API mode the server computes and stores the figures: money is decimal there,
- * and the result becomes a permanent, attributable calculation run. The browser
- * only displays what comes back.
- */
-export async function calculateProject(
-  id: string,
-  draft: ProjectDraft,
-): Promise<{
-  results: SpfmResults;
-  state: CalculationState;
-  engineVersion: string | null;
-  /** Local-mode freshness marker. Null in API mode: the server decides there. */
-  calculatedFor: string | null;
-}> {
-  if (apiMode()) {
-    const { data } = await apiPost<{
-      results: ApiResults;
-      calculationState: CalculationState;
-      engineVersion: string;
-    }>(`/api/v1/projects/${encodeURIComponent(id)}/calculate`);
-
-    return {
-      results: toResults(data.results)!,
-      state: data.calculationState,
-      engineVersion: data.engineVersion,
-      calculatedFor: null,
-    };
-  }
-
-  return {
-    results: calculate(draft.inputs),
-    state: "current",
-    engineVersion: "preview",
-    calculatedFor: fingerprint(draft.inputs),
-  };
 }
 
 export async function getHistory(
@@ -271,24 +209,6 @@ export async function getHistory(
 export async function resetSampleData(): Promise<void> {
   if (apiMode()) throw new Error("Sample data is only available in preview mode.");
   writeAll(seedProjects());
-}
-
-export function emptyInputs(): ProjectInputs {
-  return {
-    products: [{ id: crypto.randomUUID(), description: "", qty: 1, unitCost: 0, unitPrice: 0, qbItemId: null }],
-    variations: 0,
-    labourHours: 0,
-    labourRate: 0,
-    subcontractorCost: 0,
-    otherDirectCost: 0,
-    overheadPct: 0,
-  };
-}
-
-/** Local-mode freshness. In API mode the server reports it instead. */
-export function localCalculationState(p: Pick<Project, "inputs" | "results" | "calculatedFor">): CalculationState {
-  if (!p.results || !p.calculatedFor) return "never";
-  return p.calculatedFor === fingerprint(p.inputs) ? "current" : "outdated";
 }
 
 export { toFormField };

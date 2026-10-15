@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import type { CalcState } from "@/lib/spfm";
 import { STATUS_LABEL, type ProjectStatus } from "@/lib/types";
 
 export function StatusPill({ status }: { status: ProjectStatus }) {
@@ -14,36 +13,6 @@ export function StatusPill({ status }: { status: ProjectStatus }) {
   return (
     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${tone}`}>
       {STATUS_LABEL[status]}
-    </span>
-  );
-}
-
-const CALC: Record<CalcState, { label: string; cls: string; icon: React.ReactNode }> = {
-  current: {
-    label: "Calculated",
-    cls: "text-good",
-    icon: <path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />,
-  },
-  outdated: {
-    label: "Needs recalculating",
-    cls: "text-warn",
-    icon: <path d="M8 3v6M8 12v.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />,
-  },
-  never: {
-    label: "Not calculated",
-    cls: "text-muted",
-    icon: <circle cx="8" cy="8" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeDasharray="2.2 2" />,
-  },
-};
-
-export function CalcBadge({ state }: { state: CalcState }) {
-  const c = CALC[state];
-  return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${c.cls}`}>
-      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
-        {c.icon}
-      </svg>
-      {c.label}
     </span>
   );
 }
@@ -75,7 +44,7 @@ export function Spinner({ size = 14 }: { size?: number }) {
   );
 }
 
-export function Icon({ name, size = 16 }: { name: "grid" | "folder" | "plus" | "search" | "out" | "calc" | "save" | "trash" | "back" | "user"; size?: number }) {
+export function Icon({ name, size = 16 }: { name: "grid" | "folder" | "plus" | "search" | "out" | "calc" | "save" | "trash" | "back" | "user" | "queue" | "period"; size?: number }) {
   const p = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   const paths: Record<string, React.ReactNode> = {
     grid: (<><rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1" {...p} /><rect x="9" y="2.5" width="4.5" height="4.5" rx="1" {...p} /><rect x="2.5" y="9" width="4.5" height="4.5" rx="1" {...p} /><rect x="9" y="9" width="4.5" height="4.5" rx="1" {...p} /></>),
@@ -88,6 +57,8 @@ export function Icon({ name, size = 16 }: { name: "grid" | "folder" | "plus" | "
     trash: <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" {...p} />,
     back: <path d="M9.5 3.5 5 8l4.5 4.5" {...p} />,
     user: (<><circle cx="8" cy="5.5" r="2.75" {...p} /><path d="M2.75 13.5c0-2.4 2.35-4 5.25-4s5.25 1.6 5.25 4" {...p} /></>),
+    queue: (<><path d="M2.5 4h7M2.5 8h7M2.5 12h4" {...p} /><path d="M11.5 10.5 13 12l2.5-3" {...p} /></>),
+    period: (<><rect x="2.5" y="3.5" width="11" height="10" rx="1.5" {...p} /><path d="M2.5 6.5h11M5.5 2.5v2M10.5 2.5v2" {...p} /></>),
   };
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true">

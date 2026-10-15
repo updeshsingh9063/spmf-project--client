@@ -1,48 +1,63 @@
 import { describe, expect, it } from "vitest";
 import { diffProjects, type Comparable } from "./history";
-import { calculate } from "./spfm";
 
-const base: Comparable = {
-  name: "Clinic front entrance",
-  client: "Northside Medical",
-  siteAddress: "118 King Street",
+/**
+ * Preview-mode change history. The API records its own in the real workflow, but the
+ * labels have to match: history is read by Samuel, not by a developer.
+ */
+const base = (): Comparable => ({
+  name: "Warehouse fit-out, Unit 4",
+  client: "Harbour Logistics",
+  siteAddress: "4 Dockside Road",
   status: "active",
-  inputs: {
-    products: [{ id: "a", description: "Screen door", qty: 1, unitCost: 1450, unitPrice: 2480 }],
-    variations: 0,
-    labourHours: 12,
-    labourRate: 55,
-    subcontractorCost: 350,
-    otherDirectCost: 90,
-    overheadPct: 12,
-  },
-  results: null,
-};
+});
 
 describe("diffProjects", () => {
-  it("returns nothing when nothing changed", () => {
-    expect(diffProjects(base, structuredClone(base))).toEqual([]);
+  it("records nothing when nothing changed", () => {
+    expect(diffProjects(base(), base())).toEqual([]);
   });
 
-  it("describes detail, input and line changes", () => {
-    const after = structuredClone(base);
-    after.status = "complete";
-    after.inputs.labourHours = 16;
-    after.inputs.products[0].qty = 2;
-    after.inputs.products.push({ id: "b", description: "Intercom kit", qty: 1, unitCost: 610, unitPrice: 980 });
-    const c = diffProjects(base, after);
-    expect(c).toContainEqual({ field: "Status", from: "Active", to: "Complete" });
-    expect(c).toContainEqual({ field: "Labour hours", from: "12", to: "16" });
-    expect(c).toContainEqual({ field: "“Screen door” qty", from: "1", to: "2" });
-    expect(c.find((x) => x.field === "Line added")?.to).toContain("Intercom kit");
+  it("records the field with its old and new value", () => {
+    const changes = diffProjects(base(), { ...base(), name: "Warehouse fit-out, Unit 7" });
+
+    expect(changes).toHaveLength(1);
+    expect(changes[0]).toEqual({
+      field: "Project name",
+      from: "Warehouse fit-out, Unit 4",
+      to: "Warehouse fit-out, Unit 7",
+    });
   });
 
-  it("records removed lines and recalculated net profit", () => {
-    const after = structuredClone(base);
-    after.inputs.products = [];
-    after.results = calculate(after.inputs);
-    const c = diffProjects(base, after);
-    expect(c.find((x) => x.field === "Line removed")?.from).toContain("Screen door");
-    expect(c.find((x) => x.field === "Net profit (calculated)")?.from).toBe("not calculated");
+  it("labels fields the way the form does, not the way the code does", () => {
+    const changes = diffProjects(base(), { ...base(), client: "Northside Medical", siteAddress: "22 Pine Street" });
+
+    expect(changes.map((c) => c.field)).toEqual(["Customer", "Site address"]);
+  });
+
+  it("shows status as a word, not its stored value", () => {
+    const changes = diffProjects(base(), { ...base(), status: "complete" });
+
+    expect(changes[0]).toEqual({ field: "Status", from: "Active", to: "Complete" });
+  });
+
+  it("treats surrounding whitespace as no change", () => {
+    expect(diffProjects(base(), { ...base(), name: "  Warehouse fit-out, Unit 4  " })).toEqual([]);
+  });
+
+  it("says 'blank' rather than showing an empty gap", () => {
+    const changes = diffProjects(base(), { ...base(), siteAddress: "" });
+
+    expect(changes[0].to).toBe("blank");
+  });
+
+  it("records every field changed in one save", () => {
+    const changes = diffProjects(base(), {
+      name: "Renamed",
+      client: "New customer",
+      siteAddress: "Elsewhere",
+      status: "complete",
+    });
+
+    expect(changes).toHaveLength(4);
   });
 });
