@@ -26,6 +26,7 @@ with a record of who changed what.
 
 | | |
 |---|---|
+| [SCOPE-AGREED-VS-ADDITIONAL.md](SCOPE-AGREED-VS-ADDITIONAL.md) | The 24 backlog tickets mapped against the agreed scope |
 | [SYSTEM-DESIGN.md](SYSTEM-DESIGN.md) | Architecture and the reasoning behind each decision |
 | [TEST-RUNBOOK.md](TEST-RUNBOOK.md) | Step-by-step manual testing, with requirement coverage |
 | [API-CONTRACT.md](API-CONTRACT.md) | Every endpoint, verified by tests |
