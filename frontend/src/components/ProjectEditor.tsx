@@ -98,7 +98,12 @@ function LedgerRow({ label, value, sub, strong, minus }: { label: string; value:
   );
 }
 
-function Results({ r, overheadPct }: { r: SpfmResults; overheadPct: number }) {
+function Results({ r }: { r: SpfmResults }) {
+  // Derived from the figures themselves, never from the live form. Reading the
+  // current input would caption a stored amount with a rate that did not produce
+  // it -- "15% of direct cost" beside an amount calculated at 10%.
+  const overheadRate =
+    r.directCost === 0 ? null : Math.round((r.overhead / r.directCost) * 1000) / 10;
   return (
     <div>
       <LedgerRow label="Contract value" value={r.revenue} strong />
@@ -114,7 +119,12 @@ function Results({ r, overheadPct }: { r: SpfmResults; overheadPct: number }) {
       </div>
       <div className="mt-2 border-t border-line pt-2">
         <LedgerRow label="Gross profit" value={r.grossProfit} sub={fmtPct(r.grossMarginPct)} strong />
-        <LedgerRow label="Overhead" value={r.overhead} sub={`${Number.isFinite(overheadPct) ? overheadPct : 0}% of direct cost`} minus />
+        <LedgerRow
+          label="Overhead"
+          value={r.overhead}
+          sub={overheadRate === null ? undefined : `${overheadRate}% of direct cost`}
+          minus
+        />
       </div>
       <div className="mt-3 rounded-md bg-paper px-4 py-3">
         <div className="flex items-end justify-between gap-3">
@@ -573,7 +583,7 @@ export function ProjectEditor({ project }: { project: Project | null }) {
             )}
             {draft.results ? (
               <div className={state === "outdated" ? "opacity-55" : ""}>
-                <Results r={draft.results} overheadPct={draft.inputs.overheadPct} />
+                <Results r={draft.results} />
               </div>
             ) : (
               <div className="py-8 text-center">
